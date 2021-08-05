@@ -97,4 +97,4 @@ export type TCellType = (string | number | Date | null | undefined)
 export interface TObjectRow {
     [s: string]: TCellType
 }
-export type TRowType = TCellType[] | TObjectRow | Record<string, TCellType>
+export type TRowType = TCellType[] | TObjectRow | Record<string, TCellType> | Iterable<unknown>

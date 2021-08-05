@@ -23,8 +23,8 @@
     "noImplicitAny": true,
     "noImplicitThis": true,
     "declaration": true,
-    "emitDeclarationOnly": true,
-    "declarationDir": "./types",
+    "emitDeclarationOnly": false,
+   
     "declarationMap": true
   },
   "include": [

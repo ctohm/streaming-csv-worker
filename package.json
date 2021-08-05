@@ -6,7 +6,7 @@
     "type": "git",
     "url": "git@github.com:ctohm/streaming-csv-worker.git"
   },
-  "types": "types/index.d.ts",
+  "types": "dist/index.d.ts",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
   },
