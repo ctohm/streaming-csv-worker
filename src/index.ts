@@ -4,7 +4,7 @@ export class StreamingCSVParser<T extends TRowType = TRowType> {
     parser: parse.Parser
     readable: ReadableStream<any>;
     writable: WritableStream<any>;
-    separator = ''
+    separator = '['
     parsedArray = [] as T[]
     constructor(options: parse.Options) {
         const parser = parse(options)
@@ -62,27 +62,35 @@ export class StreamingCSVParser<T extends TRowType = TRowType> {
         if (!res || !res.body) {
             return res;
         }
-        let { readable, writable } = new TransformStream()
+        let encoder = new TextEncoder(),
+            decoder = new TextDecoder();
+        let { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
         const writer = writable.getWriter(),
             reader = res.body.getReader(),
             parser = this.parser;
 
         parser.on('readable', (record: T) => {
             while (record = parser.read()) {
-                writer.write(this.separator + JSON.stringify(record))
+                let chukifiedRecord = encoder.encode(this.separator + JSON.stringify(record))
+                // console.log('write to getWriter', chukifiedRecord)
+                writer.write(chukifiedRecord)
                 this.separator = ','
             }
         })
-        writer.write('[');
+
         reader.read().then(
             function processText({ done, value }): Promise<null> {
                 if (done) {
-                    writer.write(']');
+                    writer.write(encoder.encode(']'));
                     parser.end()
                     writer.close()
                     return Promise.resolve(null);
                 }
                 return parser.promisedWrite(value).then(() => {
+                    //console.log('promisedWrite to parser')
+                    return reader.read().then(processText);
+                }).catch(err => {
+                    console.error(err)
                     return reader.read().then(processText);
                 })
             })
