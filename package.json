@@ -19,7 +19,7 @@
     "name": "Felipe Figueroa"
   },
   "license": "UNLICENSED",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "devDependencies": {
     "@cloudflare/workers-types": "^2.2.2",
     "@types/csv-parse": "^1.2.2",
