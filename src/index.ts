@@ -94,4 +94,7 @@ export class StreamingCSVParser<T extends TRowType = TRowType> {
     }
 }
 export type TCellType = (string | number | Date | null | undefined)
-export type TRowType = TCellType[] | { [s: string]: TCellType };
+export interface TObjectRow {
+    [s: string]: TCellType
+}
+export type TRowType = TCellType[] | TObjectRow | Record<string, TCellType>
