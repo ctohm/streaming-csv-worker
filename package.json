@@ -12,7 +12,8 @@
   },
   "scripts": {
     "types": "tsc --project .",
-    "build": "esbuild src/index.ts --sourcemap=inline   --outdir=dist"
+    "build": "esbuild src/index.ts --sourcemap=inline   --outdir=dist",
+    "deploy": "yarn types && yarn build && yarn publish"
   },
   "author": {
     "email": "ffigueroa@ctohm.com",

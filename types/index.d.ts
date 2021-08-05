@@ -13,6 +13,9 @@ export declare class StreamingCSVParser<T extends TRowType = TRowType> {
     parse(res: Response): Promise<T[]>;
     transform(res: Response): Response;
 }
-declare type TRowType = (string | number | Date | null | undefined)[];
-export {};
+export declare type TCellType = (string | number | Date | null | undefined);
+export interface TObjectRow {
+    [s: string]: TCellType;
+}
+export declare type TRowType = TCellType[] | TObjectRow | Record<string, TCellType>;
 //# sourceMappingURL=index.d.ts.map
