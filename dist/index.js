@@ -1,8 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.StreamingCSVParser = exports.HTMLTableParser = void 0;
-const HTMLTableParser_1 = require("./HTMLTableParser");
-Object.defineProperty(exports, "HTMLTableParser", { enumerable: true, get: function () { return HTMLTableParser_1.HTMLTableParser; } });
-const StreamingCSVParser_1 = require("./StreamingCSVParser");
-Object.defineProperty(exports, "StreamingCSVParser", { enumerable: true, get: function () { return StreamingCSVParser_1.StreamingCSVParser; } });
-//# sourceMappingURL=index.js.map
+import { HTMLTableParser } from "./HTMLTableParser";
+import { StreamingCSVParser } from "./StreamingCSVParser";
+export { HTMLTableParser, StreamingCSVParser };
+//# sourceMappingURL=data:application/json;base64,ewogICJ2ZXJzaW9uIjogMywKICAic291cmNlcyI6IFsiLi4vc3JjL2luZGV4LnRzIl0sCiAgInNvdXJjZXNDb250ZW50IjogWyJpbXBvcnQgeyBIVE1MVGFibGVQYXJzZXIgfSBmcm9tICcuL0hUTUxUYWJsZVBhcnNlcic7XG5pbXBvcnQgeyBTdHJlYW1pbmdDU1ZQYXJzZXIgfSBmcm9tICcuL1N0cmVhbWluZ0NTVlBhcnNlcic7XG4vLyMgc291cmNlTWFwcGluZ1VSTD1pbmRleC5kLnRzLm1hcFxuXG5leHBvcnQgeyBIVE1MVGFibGVQYXJzZXIsIFN0cmVhbWluZ0NTVlBhcnNlciB9Il0sCiAgIm1hcHBpbmdzIjogIkFBQUE7QUFDQTtBQUdBOyIsCiAgIm5hbWVzIjogW10KfQo=

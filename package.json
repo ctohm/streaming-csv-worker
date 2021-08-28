@@ -7,14 +7,14 @@
     "type": "git",
     "url": "git@github.com:ctohm/streaming-csv-worker.git"
   },
-  "types": "dist/index.d.ts",
+  "types": "dist/main.d.ts",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com/"
   },
   "scripts": {
-    "types": "tsc --project .",
-    "build": "rm dist/* && esbuild src/index.ts --sourcemap=inline   --outdir=dist",
-    "deploy": "yarn types && yarn build && yarn publish"
+    "types": "tsc --project .  && cp src/main.d.ts dist/",
+    "build": "esbuild src/index.ts --sourcemap=inline   --outdir=dist",
+    "deploy": "rm dist/* &&   yarn types && yarn build && yarn publish"
   },
   "author": {
     "email": "ffigueroa@ctohm.com",
