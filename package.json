@@ -1,7 +1,8 @@
 {
   "name": "@ctohm/streaming-csv-worker",
   "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
-  "main": "dist/index.js",
+  "main": "dist/index.mjs",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git@github.com:ctohm/streaming-csv-worker.git"
@@ -12,7 +13,7 @@
   },
   "scripts": {
     "types": "tsc --project .  && cp src/main.d.ts dist/",
-    "build": "esbuild src/index.ts --sourcemap=inline --bundle  --outdir=dist",
+    "build": "node esbuild.mjs --sourcemap=inline   --outdir=dist",
     "deploy": "rm dist/* &&   yarn types && yarn build && yarn publish"
   },
   "author": {
@@ -23,7 +24,7 @@
     "dist"
   ],
   "license": "UNLICENSED",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "devDependencies": {
     "@cloudflare/workers-types": "^2.2.2",
     "@types/csv-parse": "^1.2.2",
