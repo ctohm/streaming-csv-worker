@@ -12,7 +12,7 @@
   },
   "scripts": {
     "types": "tsc --project .  && cp src/main.d.ts dist/",
-    "build": "esbuild src/index.ts --sourcemap=inline   --outdir=dist",
+    "build": "esbuild src/index.ts --sourcemap=inline --bundle  --outdir=dist",
     "deploy": "rm dist/* &&   yarn types && yarn build && yarn publish"
   },
   "author": {
@@ -24,10 +24,8 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^2.2.2",
     "@types/csv-parse": "^1.2.2",
+    "csv-parse": "^4.16.0",
     "esbuild": "^0.12.17",
     "miniflare": "^1.3"
-  },
-  "dependencies": {
-    "csv-parse": "^4.16.0"
   }
 }
