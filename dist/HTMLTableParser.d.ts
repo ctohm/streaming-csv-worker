@@ -19,4 +19,3 @@ export declare class HTMLTableParser {
     transform(res: Response): Response;
 }
 export {};
-//# sourceMappingURL=HTMLTableParser.d.ts.map

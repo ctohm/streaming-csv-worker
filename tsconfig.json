@@ -23,14 +23,12 @@
     "noImplicitAny": true,
     "noImplicitThis": true,
     "declaration": true,
-    "emitDeclarationOnly": false,
-   "declarationDir": "./types",
-    "declarationMap": true
+    
   },
   "include": [
     "./src/*.d.ts",
     "./src/*.ts"
-, "src/parseIncomingCSV.xs", "src/HTMLTableParser.adapter.x"  ],
+   ],
   "exclude": [
     "node_modules/",
     "dist/"

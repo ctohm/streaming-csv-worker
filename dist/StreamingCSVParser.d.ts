@@ -18,4 +18,3 @@ export declare class StreamingCSVParser<T extends TRowType = TRowType> {
     parse(res: Response): Promise<T[]>;
     transform(res: Response): Response;
 }
-//# sourceMappingURL=StreamingCSVParser.d.ts.map
