@@ -19,8 +19,11 @@
     "email": "ffigueroa@ctohm.com",
     "name": "Felipe Figueroa"
   },
+  "files": [
+    "dist"
+  ],
   "license": "UNLICENSED",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "devDependencies": {
     "@cloudflare/workers-types": "^2.2.2",
     "@types/csv-parse": "^1.2.2",
