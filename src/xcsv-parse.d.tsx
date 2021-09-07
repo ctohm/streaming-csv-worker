@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 declare module 'csv-parse/lib/browser' {
 
 

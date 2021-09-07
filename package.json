@@ -1,8 +1,8 @@
 {
   "name": "@ctohm/streaming-csv-worker",
   "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
-  "main": "dist/index.mjs",
-  "type": "module",
+  "main": "dist/index.js",
+  "type": "commonjs",
   "repository": {
     "type": "git",
     "url": "git@github.com:ctohm/streaming-csv-worker.git"
@@ -21,14 +21,18 @@
     "name": "Felipe Figueroa"
   },
   "files": [
-    "dist",
-    "index.mjs"
+    "dist"
   ],
   "license": "UNLICENSED",
   "version": "0.9.7",
+  "dependencies": {
+    "@types/csv-parse": "^1.2.2"
+  },
   "devDependencies": {
     "@cloudflare/workers-types": "^2.2.2",
-    "@types/csv-parse": "^1.2.2",
+    "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
+    "@esbuild-plugins/node-modules-polyfill": "^0.1.2",
+    "ava": "^3.15.0",
     "csv-parse": "^4.16.0",
     "esbuild": "^0.12.17",
     "miniflare": "^1.3"

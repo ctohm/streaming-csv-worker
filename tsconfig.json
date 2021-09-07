@@ -2,7 +2,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "target": "ES2020",
-    "module": "CommonJS",
+    "module": "ES2020",
     "lib": [
       "ES2020",
       "WebWorker"
@@ -13,8 +13,8 @@
     "strict": true,
     "preserveConstEnums": true,
     "moduleResolution": "node",
-    "sourceMap": true,
-    "esModuleInterop": true,
+     "esModuleInterop": true,
+     "emitDeclarationOnly": true,
     "types": [
       "@cloudflare/workers-types",
       "@types/node"
@@ -23,11 +23,15 @@
     "noImplicitAny": true,
     "noImplicitThis": true,
     "declaration": true,
-    
+    "inlineSourceMap": true,
+    "importsNotUsedAsValues": "error"
   },
   "include": [
     "./src/*.d.ts",
-    "./src/*.ts"
+    "./src/*.ts",
+    
+   // "./node_modules/csv-parse/lib/browser/index.js",
+   // "./node_modules/@cloudflare/workers-types/index.d.ts"
    ],
   "exclude": [
     "node_modules/",
