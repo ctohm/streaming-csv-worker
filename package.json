@@ -1,8 +1,9 @@
 {
   "name": "@ctohm/streaming-csv-worker",
   "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
-  "main": "dist/index.js",
-  "type": "commonjs",
+  "main": "dist/index.mjs",
+  "module": "src/index.ts",
+  "type": "module",
   "repository": {
     "type": "git",
     "url": "git@github.com:ctohm/streaming-csv-worker.git"
@@ -14,17 +15,20 @@
   "scripts": {
     "transpile": "tsc --project .   ",
     "build": "rm dist/* &&  yarn transpile && node esbuild.mjs     --outdir=dist",
-    "deploy": "rm dist/* &&   yarn transpile && yarn build && cp src/index.ts dist/index.mjs &&  yarn publish"
+    "deploy": "rm dist/* &&   yarn transpile && yarn build &&    yarn publish",
+    "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
+    "build:dev": "NODE_ENV=development node esbuild.mjs"
   },
   "author": {
     "email": "ffigueroa@ctohm.com",
     "name": "Felipe Figueroa"
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "license": "UNLICENSED",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "dependencies": {
     "@types/csv-parse": "^1.2.2"
   },
