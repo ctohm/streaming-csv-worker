@@ -2,8 +2,9 @@
 
 declare module 'csv-parse/lib/browser' {
 
+    import type { Buffer, BufferEncoding } from 'worktop/buffer';
 
-    import * as stream from "stream";
+    import type { Transform } from "stream";
     export = parse;
 
     function parse(input: Buffer | string, options?: parse.Options, callback?: parse.Callback): parse.Parser;
@@ -22,7 +23,7 @@ declare module 'csv-parse/lib/browser' {
         type Callback = (err: Error | undefined, records: any | undefined, info: Info) => void;
 
 
-        interface Parser extends stream.Transform {
+        interface Parser extends Transform {
 
             promisedWrite: (input: Buffer | string | Uint8Array | undefined) => Promise<void>
         }

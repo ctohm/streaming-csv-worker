@@ -14,16 +14,17 @@
     "preserveConstEnums": true,
     "moduleResolution": "node",
      "esModuleInterop": true,
-     "emitDeclarationOnly": true,
+    "declarationMap": true,
     "types": [
-      "@cloudflare/workers-types",
-      "@types/node"
+      "@cloudflare/workers-types"
     ],
     "rootDir": "./src",
     "noImplicitAny": true,
     "noImplicitThis": true,
     "declaration": true,
+    "emitDeclarationOnly": true,
     "inlineSourceMap": true,
+    "inlineSources": true,
     "importsNotUsedAsValues": "error"
   },
   "include": [

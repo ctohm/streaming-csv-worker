@@ -17,18 +17,19 @@ let buildOptions={
     entryPoints: [ 'src/index.ts'],
     outExtension:{'.js':'.mjs'},
     outdir:'dist',
-   // format:'esm',
+     format:'esm',
+     treeShaking: true,
+     minifySyntax: true,
+     minifyIdentifiers: true,
     sourcemap: mode!=="production",
-    minify:mode==="production",
+    minify:false &&mode==="production",
     target:'es2020',
-    plugins: [
-         NodeModulesPolyfills.default(),
-        GlobalsPolyfills.default({
-            process: true,
-            buffer: true,
-           // define: { 'process.env.var': '"hello"' }, // inject will override define, to keep env vars you must also pass define here https://github.com/evanw/esbuild/issues/660
-        }),
-    ],
+    //plugins: [
+         //NodeModulesPolyfills.default(),
+        //GlobalsPolyfills.default({
+            //process: true,
+        //}),
+    //],
 
 }
 esbuild

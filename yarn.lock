@@ -1846,6 +1846,11 @@ redis-parser@^3.0.0:
   dependencies:
     redis-errors "^1.0.0"
 
+regexparam@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/regexparam/-/regexparam-2.0.0.tgz#059476767d5f5f87f735fc7922d133fd1a118c8c"
+  integrity sha512-gJKwd2MVPWHAIFLsaYDZfyKzHNS4o7E/v8YmNf44vmeV2e4YfVoDToTOKTvE7ab68cRJ++kLuEXJBaEeJVt5ow==
+
 registry-auth-token@^4.0.0:
   version "4.2.1"
   resolved "https://registry.yarnpkg.com/registry-auth-token/-/registry-auth-token-4.2.1.tgz#6d7b4006441918972ccd5fedcd41dc322c79b250"
@@ -2368,6 +2373,13 @@ widest-line@^3.1.0:
   integrity sha512-NsmoXalsWVDMGupxZ5R08ka9flZjjiLvHVAWYOKtiKM8ujtZWr9cRffak+uSE48+Ob8ObalXpwyeUiyDD6QFgg==
   dependencies:
     string-width "^4.0.0"
+
+worktop@0.8.0-next.5:
+  version "0.8.0-next.5"
+  resolved "https://registry.yarnpkg.com/worktop/-/worktop-0.8.0-next.5.tgz#4b5172b39a390f424ebff7a46dbf3e12999c8a18"
+  integrity sha512-yeS2PB8PaUvn7WfRkrKmmxTRkVqEdTVEzEXW1YpEVpLqyT5ljz9bmv5Mc33JRuA7p9wcVCuGmmACvQADRPAsmw==
+  dependencies:
+    regexparam "^2.0.0"
 
 wrap-ansi@^7.0.0:
   version "7.0.0"

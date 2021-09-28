@@ -1,7 +1,7 @@
-import parse from 'csv-parse';
+import parse from 'csv-parse/lib/browser';
 
 class ParserPlus extends parse.Parser {
-    promisedWrite(chunk: string | Buffer | Uint8Array | undefined): Promise<void> {
+    promisedWrite2(chunk: string | Buffer | Uint8Array | undefined): Promise<void> {
         return new Promise<void>((resolve, reject): void => {
             this.write(chunk, (error: Error | null | undefined): void => {
                 return (error ? reject(error) : resolve()) as void;
@@ -23,8 +23,14 @@ export class StreamingCSVParser<T extends TRowType = TRowType> {
     separator = '[';
     parsedArray = [] as T[];
     constructor(options: parse.Options) {
-        const parser = new ParserPlus(options)
-
+        const parser = parse(options) as parse.Parser & { promisedWrite: (chunk: string | Buffer | Uint8Array | undefined) => Promise<void> };
+        parser.promisedWrite = (chunk: string | Buffer | Uint8Array | undefined): Promise<void> => {
+            return new Promise<void>((resolve, reject): void => {
+                parser.write(chunk, (error: Error | null | undefined): void => {
+                    return (error ? reject(error) : resolve()) as void;
+                });
+            });
+        };
 
 
 
