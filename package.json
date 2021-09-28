@@ -13,8 +13,8 @@
   },
   "scripts": {
     "transpile": "tsc --project .   ",
-    "build": "rm dist/* &&  yarn transpile && node esbuild.mjs     --outdir=dist",
-    "deploy": "rm dist/* &&   yarn transpile && yarn build &&    yarn publish",
+    "build": "rm -rf dist/* &&  yarn transpile && node esbuild.mjs     --outdir=dist",
+    "deploy": " yarn build &&    yarn publish",
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
     "build:dev": "NODE_ENV=development node esbuild.mjs"
   },
@@ -27,10 +27,8 @@
     "src"
   ],
   "license": "UNLICENSED",
-  "version": "1.0.2",
-  "dependencies": {
-    "@types/csv-parse": "^1.2.2"
-  },
+  "version": "1.0.3",
+  "dependencies": {},
   "devDependencies": {
     "@cloudflare/workers-types": "^2.2.2",
     "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
