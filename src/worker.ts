@@ -81,7 +81,7 @@ export default {
         const url = new URL(request.url)
         if (url.pathname.includes('favicon')) return getFavicon()
 
-        if (url.pathname.includes('xhr')) return new Response(getPapaXHR(), { headers: { 'content-type': 'text/html; charset=utf-8' } })
+        if (url.pathname.includes('xhr') || url.pathname.includes('AOK_holdings')) return new Response(getPapaXHR(), { headers: { 'content-type': 'text/html; charset=utf-8' } })
         if (url.pathname.includes('papa')) return getWithPapaParse(getCSV(url.pathname, request))
         if (url.pathname.includes('papa')) return getWithPapaParse(getCSV(url.pathname, request))
         if (url.pathname.includes('full')) return getWithPapaParseConvertingToText(getCSV(url.pathname, request))
