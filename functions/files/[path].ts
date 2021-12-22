@@ -25,6 +25,6 @@ export async function onRequestGet({ env, request }) {
     response.headers.set("Access-Control-Allow-Origin", "*")
     response.headers.set("Access-Control-Expose-Headers", "*")
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Range, Content-Range")
     return response
 }
