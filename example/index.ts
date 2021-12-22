@@ -1,5 +1,4 @@
 export * from './HTMLTableParser';
-export * from './StreamingCSVParser';
+export * from '..';
 //# sourceMappingURL=index.d.ts.map
 
- 

@@ -18,7 +18,7 @@
     "types": [
       "@cloudflare/workers-types"
     ],
-    "rootDir": "./src",
+    "rootDirs": ["./src","./test"],
     "noImplicitAny": true,
     "noImplicitThis": true,
     "declaration": true,
@@ -30,9 +30,10 @@
   "include": [
     "./src/*.d.ts",
     "./src/*.ts",
-    
-   // "./node_modules/csv-parse/lib/browser/index.js",
-   // "./node_modules/@cloudflare/workers-types/index.d.ts"
+    "./test/*.d.ts",
+    "./test/*.ts",
+    "./lib/*.d.ts",
+    "./lib/*.ts",
    ],
   "exclude": [
     "node_modules/",

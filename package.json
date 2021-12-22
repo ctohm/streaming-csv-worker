@@ -12,11 +12,16 @@
     "registry": "https://npm.pkg.github.com/"
   },
   "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:serve": "vitepress serve docs",
     "transpile": "tsc --project .   ",
-    "build": "rm -rf dist/* &&  yarn transpile && node esbuild.mjs     --outdir=dist",
-    "deploy": " yarn build &&    yarn publish",
+    "build": "node esbuild.mjs     --outdir=dist",
+    "deploy": "rm -rf dist/* &&  yarn transpile && yarn build &&    yarn publish",
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
-    "build:dev": "NODE_ENV=development node esbuild.mjs"
+    "build:dev": "NODE_ENV=development node esbuild.mjs",
+    "build:worker": "esbuild   --format=esm src/worker.ts --outfile=dist/worker.mjs",
+    "miniflare": "miniflare dist/worker.mjs -d -w"
   },
   "author": {
     "email": "ffigueroa@ctohm.com",
@@ -33,10 +38,16 @@
     "@cloudflare/workers-types": "^2.2.2",
     "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
     "@esbuild-plugins/node-modules-polyfill": "^0.1.2",
+    "@types/papaparse": "^5.2.6",
     "ava": "^3.15.0",
     "csv-parse": "^4.16.0",
     "esbuild": "^0.12.17",
     "miniflare": "^1.3",
+    "papaparse": "^5.3.1",
     "worktop": "0.8.0-next.5"
+  },
+  "peerDependencies": {
+    "@fast-csv/parse": "^4.3.6",
+    "vitepress": "^0.20.9"
   }
 }

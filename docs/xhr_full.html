@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="papaparse.js"></script>
+    </head>
+    <body>
+        <script type="application/javascript" >
+
+async function getWithPapaParse(req  ) {
+    let t_ini = Date.now(), parsed = []
+    console.time('Papaparse');
+    return new Promise((resolve, reject) => {
+
+
+        try {
+            parsed = Papa.parse(req.url, {
+                download: true,
+          
+                complete: (result) => {
+                    console.timeEnd('Papaparse');
+                    console.log(result.meta)
+                    
+                    resolve(result.data)
+                }
+            })
+        } catch (err) {
+            console.warn(err)
+            reject(err)
+        }
+    })
+   
+}
+let rq=new Request("http://localhost:8787/ishares" ,{headers:{'cache-control':'no-cache'}})
+        getWithPapaParse(rq).then(data=>{
+            let stringified=JSON.stringify(data)
+            return new Response('stringified length '+stringified.length+' characters',{headers:{'cache-control':'no-cache'}})
+        })
+        </script>
+    </body>
+</html>

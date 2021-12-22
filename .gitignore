@@ -10,3 +10,10 @@ node_modules/
 .cargo-ok
 transpiled/
 wrangler.toml
+miniflare
+web-streams*
+csv 
+
+
+ttfb 
+

@@ -34,15 +34,15 @@ console.log(StreamingCSVParser)
 test.beforeEach((t) => {
   // Create a new Miniflare environment for each test
   const mf = new Miniflare({
-    scriptPath: "./test/worker.mjs",
+    scriptPath: "./dist/worker.mjs",
     // Some options omitted, see src/options/index.ts for the full list
     sourceMap: true,
     log: new ConsoleLog(), // Defaults to no-op logger
     wranglerConfigPath: "./wrangler.toml",
     watch: true,
     port: 8778,
-    upstream: "https://workers.roboadwiser.com",
-    crons: ["*/5 * * * *"],
+    upstream: "https://www.cmfchile.cl",
+    crons: ["*/55 * * * *"],
     //kvNamespaces: ["TEST_NAMESPACE"],
     kvPersist: 'redis://localhost:6379',
     cachePersist: false,
@@ -55,15 +55,41 @@ test.beforeEach((t) => {
   t.context = { mf };
   console.log(t.context)
 });
-const CMF_API_URL = "https://www.cmfchile.cl/institucional/estadisticas/ffm_download.php";
-test("increments path count for new paths", async (t) => {
+
+test("request to small CSV source is tranformed to a json parsable response", async (t) => {
   // Get the Miniflare instance
   const { mf } = t.context;
   // Dispatch a fetch event to our worker
-  const response1 = await mf.dispatchFetch(CMF_API_URL);
+
+  /**
+   * @type {Response} response1
+   */
+  const response1 = await mf.dispatchFetch('http://127.0.0.1:8787'),
+  ct=response1.headers.get('content-type');
+
+  t.is(ct,'application/json;charset=UTF-8')
+
   t.is(response1.status, 200)
-   
-let holdings=await response1.json()
+  
+  let holdings=await response1.json()
   // Check the count is "1" as this is the first time we've been to this path
   t.assert(Array.isArray(holdings));
+});
+
+test("request to huge CSV source is tranformed to a json parsable response", async (t) => {
+  // Get the Miniflare instance
+  const { mf } = t.context;
+  // Dispatch a fetch event to our worker
+
+  /**
+   * @type {Response} response1
+   */
+  const response1 = await mf.dispatchFetch('http://127.0.0.1:8787/ishares'),
+  ct=response1.headers.get('content-type');
+
+  t.is(ct,'application/json;charset=UTF-8')
+
+  t.is(response1.status, 200)
+  
+  
 });
