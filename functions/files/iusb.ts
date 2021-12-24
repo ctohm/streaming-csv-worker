@@ -1,4 +1,4 @@
-export async function onRequestOptions({ env, request }) {
+export async function onRequestOptions({ request }: { request: Request }) {
 
     return new Response(null, {
         headers: {
@@ -9,7 +9,7 @@ export async function onRequestOptions({ env, request }) {
         },
     });
 }
-}
+
 export function getMediumCSVRequest(req: Request): Request {
 
     let newReq = new Request("https://www.ishares.com/us/products/264615/ishares-core-total-usd-bond-market-etf/1467271812596.ajax?fileType=csv&fileName=IUSB_holdings&dataType=fund", req);
@@ -18,7 +18,7 @@ export function getMediumCSVRequest(req: Request): Request {
 
 }
 
-export async function onRequestGet({ env, request }) {
+export async function onRequestGet({ request }: { request: Request }) {
 
     let response = await fetch(getMediumCSVRequest(request))
     response = new Response(response.body, response)

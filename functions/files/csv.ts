@@ -1,4 +1,4 @@
-export async function onRequestOptions({ env, request }) {
+export async function onRequestOptions({ request }: { request: Request }) {
 
     return new Response(null, {
         headers: {
@@ -17,7 +17,7 @@ function getHugeCSV(req: Request): Request {
 
 }
 
-export async function onRequestGet({ env, request }) {
+export async function onRequestGet({ request }: { request: Request }) {
 
     let response = await fetch(getHugeCSV(request))
     let csv = await response.text()
