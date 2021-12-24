@@ -34,6 +34,8 @@
     "./test/*.ts",
     "./lib/*.d.ts",
     "./lib/*.ts",
+    "./functions/*.ts",
+    "./functions/**/*.ts"
    ],
   "exclude": [
     "node_modules/",

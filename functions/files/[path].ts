@@ -1,11 +1,11 @@
-export async function onRequestOptions({ env, request }) {
+export async function onRequestOptions({ request }: { request: Request }) {
 
     return new Response(null, {
         headers: {
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Expose-Headers": "*",
             "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Range, Content-Range",
+            "Access-Control-Allow-Headers": 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Range, Content-Range, Content-MD5, Content-Type, Date, X-Api-Version'
         },
     });
 }
@@ -17,7 +17,7 @@ function getHugeCSV(req: Request): Request {
 
 }
 
-export async function onRequestGet({ env, request }) {
+export async function onRequestGet({ request }: { request: Request }) {
 
     let response = await fetch(getHugeCSV(request))
     response = new Response(response.body, response)
@@ -25,6 +25,20 @@ export async function onRequestGet({ env, request }) {
     response.headers.set("Access-Control-Allow-Origin", "*")
     response.headers.set("Access-Control-Expose-Headers", "*")
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Range, Content-Range")
+    response.headers.set("Access-Control-Allow-Headers", 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Range, Content-Range, Content-MD5, Content-Type, Date, X-Api-Version')
     return response
 }
+
+export async function onRequestPost({ request }: { request: Request }) {
+
+
+
+    let response = new Response(JSON.stringify({ ...request.cf }), { headers: { 'Content-Type': 'application/json' } });
+    response.headers.set("Cache-Control", "no-cache, no-store, s-maxage=1, max-age=1")
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    response.headers.set("Access-Control-Expose-Headers", "*")
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+    response.headers.set("Access-Control-Allow-Headers", 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Range, Content-Range, Content-MD5, Content-Type, Date, X-Api-Version')
+    return response
+}
+

@@ -2,41 +2,83 @@
 <html>
 
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.1/papaparse.min.js"
-        integrity="sha256-tDf9H6Pr0oXtuyG0hGdMQ5OU5EuM5IK8WMK2iTbdvd0=" crossorigin="anonymous"></script>
+    <script src="/papaparse.js"></script>
 
     <script type="application/javascript">
+        const po = new PerformanceObserver((list) => {
+            let newEntries = list.getEntries().map(
+                /**
+                 * @param {PerformanceEntry} entry
+                 **/
+                (entry) => {
+                    let { name, workerStart, transferSize, responseStart, entryType, } = entry;
 
+                    return { name, workerStart, transferSize, responseStart };
+                });
+            console.log(newEntries);
+            return newEntries;
+        });
+        // Start listening for `resource` entries to be dispatched.
+        po.observe({ entryTypes: ['resource', 'mark', 'measure'] });
+
+        function downloadBlob(blob, fileName = 'file.txt') {
+            // Convert your blob into a Blob URL (a special url that points to an object in the browser's memory)
+            const blobUrl = URL.createObjectURL(blob);
+
+            console.log(performance.measure('Download Complete', 'Sending XHR'))
+            console.log(blobUrl)
+
+
+        }
         async function getWithPapaParse(req) {
 
             Papa.RemoteChunkSize = 7 * 1024 * 1024;
+            let startXhrMark, completeMark, frMark;
+
+
             return new Promise((resolve, reject) => {
+                startXhrMark = performance.mark('Sending XHR')
                 let timerOpen = true, parsed = []
-                console.time('First Row');
-                console.time('Papaparse Complete');
                 Papa.parse(req.url, {
                     download: true,
                     chunkSize: 7 * 1024 * 1024,
+                    beforeFirstChunk: (chunk) => {
+                        console.log(performance.measure('Download Finished', 'Sending XHR'))
+                        return chunk
+                    },
                     step: (result) => {
                         parsed.push(result.data)
                         if (timerOpen) {
                             timerOpen = false;
-                            resolve(result.data)
+                            console.log(performance.measure('First Row', 'Sending XHR'))
+
                         }
 
                     },
                     complete: () => {
-                        const response = new Response(JSON.stringify(parsed))
-                        console.timeEnd('Papaparse Complete');
+                        console.log(performance.measure('Parsed', 'Sending XHR'))
+                        resolve(JSON.stringify(parsed))
                     }
                 })
             })
         }
-        let rq = new Request("https://csv.riff.one/files/ishares", { headers: { 'cache-control': 'no-cache' } })
-        getWithPapaParse(rq).then(data => {
-            document.body.textContent = JSON.stringify(data)
-            console.timeEnd('First Row');
-        })
+        let rq = new Request("https://csv.cf-badger.com/csv/raw" )
+        getWithPapaParse(rq)
+            .then(stringified => {
+                console.log(performance.measure('stringified', 'Sending XHR'))
+
+             
+                return fetch('https://postman-echo.com/post', { method: 'POST', body: stringified, mode: "no-cors", headers: { 'Content-Type': 'application/json' } }).then(res => {
+                    console.log(performance.measure('Upload Complete', 'Sending XHR'))
+                    po.disconnect()
+                    return Object.fromEntries(res.headers)
+
+                })
+            });
+
+
+
+
     </script>
 </head>
 
