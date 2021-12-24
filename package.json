@@ -2,7 +2,7 @@
   "name": "@ctohm/streaming-csv-worker",
   "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
   "module": "dist/index.mjs",
-  "main": "dist/cjs/index.js",
+  "main": "dist/index.cjs",
   "repository": {
     "type": "git",
     "url": "git@github.com:ctohm/streaming-csv-worker.git"

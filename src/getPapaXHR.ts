@@ -30,7 +30,7 @@ async function getWithPapaParse(req  ) {
             })
         })
     }
-let rq=new Request("/AOK_holdings.csv" ,{headers:{'cache-control':'no-cache'}})
+let rq=new Request("https://csv.riff.one/files/ishares" ,{headers:{'cache-control':'no-cache'}})
         getWithPapaParse(rq).then(data=>{
             document.body.textContent=JSON.stringify(data)
             console.timeEnd('First Row');

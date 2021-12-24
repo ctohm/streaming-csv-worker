@@ -1,7 +1,7 @@
 import { StreamingCSVParser } from '../lib'
 import Papa from 'papaparse'
-import { FetchPapaStreamer } from '../lib'
-import { getHugeCSV, getSmallCSV, getHugeCSVPassThrough, getSmallCSVPassThrough } from './getHugeCSV';
+import { FetchPapaStreamer } from '../lib/FetchPapaStreamer_v2'
+import { getHugeCSVRequest, getSmallCSVRequest, getCSVPassThrough } from './getHugeCSV';
 import { getPapaXHR } from './getPapaXHR';
 
 const faviconSvg = `<svg width="256.8" height="256.24" version="1.1" viewBox="0 0 67.946032 67.796278" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
@@ -30,13 +30,14 @@ async function getWithPapaParseConvertingToText(req: Request): Promise<Response>
     }
 
 
-    let resCsv = await res.text(),
+    return res.text().then(resCsv => {
 
 
-        parsed = (Papa.parse(resCsv).data)
-    const stringified = JSON.stringify(parsed)
-    console.timeEnd('getWithPapaParseConvertingToText');
-    return new Response(JSON.stringify({ records: parsed.length }), { headers: { 'content-type': 'application/json' } })
+        let parsed = (Papa.parse(resCsv).data)
+        const stringified = JSON.stringify(parsed)
+        console.timeEnd('getWithPapaParseConvertingToText');
+        return new Response(JSON.stringify({ records: parsed.length }), { headers: { 'content-type': 'application/json' } })
+    })
 
 }
 async function getWithStreamingCSV(req: Request): Promise<Response> {
@@ -66,8 +67,8 @@ function getFavicon(): Response {
 }
 function getCSV(pathname: string, req: Request): Request {
     console.log({ getCSV: pathname })
-    if (pathname.includes('ishares')) return getHugeCSV(req)
-    return getSmallCSV(req)
+    if (pathname.includes('ishares')) return getHugeCSVRequest(req)
+    return getSmallCSVRequest(req)
 }
 export default {
     fetch: (request: Request): Response | Promise<Response> => {
@@ -81,13 +82,11 @@ export default {
         const url = new URL(request.url)
         if (url.pathname.includes('favicon')) return getFavicon()
 
-        if (url.pathname.includes('xhr') || url.pathname.includes('AOK_holdings')) return new Response(getPapaXHR(), { headers: { 'content-type': 'text/html; charset=utf-8' } })
-        if (url.pathname.includes('papa')) return getWithPapaParse(getCSV(url.pathname, request))
-        if (url.pathname.includes('papa')) return getWithPapaParse(getCSV(url.pathname, request))
-        if (url.pathname.includes('full')) return getWithPapaParseConvertingToText(getCSV(url.pathname, request))
+        if (url.pathname.includes('xhr')) return new Response(getPapaXHR(), { headers: { 'content-type': 'text/html; charset=utf-8' } })
+        if (url.pathname.includes('papa')) return getWithPapaParse(new Request('https://csv.riff.one/files/ishares'))
+        if (url.pathname.includes('stream')) return getWithStreamingCSV(new Request('https://csv.riff.one/files/ishares'))
+        return getWithPapaParseConvertingToText(new Request('https://csv.riff.one/files/ishares'))
 
-        if (url.pathname.includes('stream')) return getWithStreamingCSV(getCSV(url.pathname, request))
-        if (url.pathname.includes('ishares')) return getHugeCSVPassThrough(request)
-        return getSmallCSVPassThrough(request)
+
     }
 }

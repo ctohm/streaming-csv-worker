@@ -17,3 +17,6 @@ csv
 
 ttfb 
 
+deploy.sh 
+.vscode
+*.log
