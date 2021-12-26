@@ -12,13 +12,24 @@ interface TObjectRow {
 }
 type TRowType = TCellType[] | TObjectRow | Record<string, TCellType> | Iterable<unknown>
 
-class ParserPlus extends parse.Parser {
-    constructor(options: parse.Options) {
+type TParserExtendedOptions<T extends TRowType = TRowType> = parse.Options & {
+    step?: { (record: T): void },
+    complete?: { (results: T[]): void }
+}
+class ParserPlus<T> extends parse.Parser {
+    controller!: TransformStreamDefaultController
+    onRecord: (record: T) => void
+    constructor(options: TParserExtendedOptions<T>) {
         super(options)
         //this.originalWrite = this.write
         this.write = this.promisedWrite as unknown as parse.Parser['write']
 
+        this.onRecord = (record: T): void => {
+            throw new Error('not implemented')
+        }
     }
+
+
     promisedWrite(chunk: string | Buffer | Uint8Array | undefined): Promise<void> {
         return new Promise<void>((resolve, reject): void => {
             super.write(chunk, (error: Error | null | undefined): void => {
@@ -27,85 +38,100 @@ class ParserPlus extends parse.Parser {
         });
     };
 }
-export class StreamingCSVParser<T extends TRowType = TRowType> {
-    parser: ParserPlus
-    readable: ReadableStream<any>;
-    writable: WritableStream<any>;
 
-    separator = '[';
-    parsedArray = [] as T[];
+export class StreamingCSVParser<T extends TRowType = TRowType> extends TransformStream<Uint8Array, Uint8Array> {
+    parsedArray: T[]
+    parser: ParserPlus<T>
     extraHeaders: Headers
-    constructor(options: ParserOptions, extraHeaders: { [s: string]: string }) {
+    constructor(options: TParserExtendedOptions, extraHeaders: { [s: string]: string } = {}) {
+        let separator = '',
+            finalChar = '',
+            streamIsClosed = false
 
-        this.extraHeaders = new Headers()
-        Object.entries(extraHeaders || {}).forEach(([key, value]) => {
-            this.extraHeaders.set(key, String(value))
-        })
-        this.parser = new ParserPlus(options)
+        const parser = new ParserPlus<T>(options)
+        const textencoder = new TextEncoder(),
+            textdecoder = new TextDecoder(),
+            transformContent = {
 
-        let { readable, writable } = new TransformStream();
-        this.readable = readable;
-        this.writable = writable;
+                start(controller: TransformStreamDefaultController): void {
+                    parser.controller = controller
+                    controller.enqueue('[')
+
+                },
+
+
+                transform: async (chunk: Uint8Array, controller: TransformStreamDefaultController): Promise<void> => {
+                    chunk = await chunk
+
+                    switch (typeof chunk) {
+                        case 'object':
+                            // just say the stream is done I guess
+                            if (!chunk) controller.terminate()
+
+                            let chunkText = chunk ? textdecoder.decode(chunk) : textdecoder.decode(),
+                                result = parser.promisedWrite(chunkText)
+
+                            break
+                        default:
+                            controller.enqueue(textencoder.encode(String(chunk)))
+                            break
+                    }
+                },
+                flush(controller: TransformStreamDefaultController): void {
+                    console.log('called flush')
+                    streamIsClosed = true;
+                    parser.end();
+                    if (finalChar === '') {
+                        finalChar = ']'
+                        controller.enqueue(finalChar)
+                    }
+                }, // required.
+
+            }
+        super({ ...transformContent })
+        this.parsedArray = [] as T[]
+        this.extraHeaders = new Headers(extraHeaders)
+        this.extraHeaders.set('content-type', 'application/json;charset=UTF-8')
+        parser.onRecord = (record: T) => {
+            if (!parser.controller) return
+            parser.controller.enqueue(textencoder.encode(separator + JSON.stringify(record)))
+            separator = ','
+        }
+        parser.on('readable', (record: unknown) => {
+            if (separator === '') console.log(Date.now() + ' internal:onreadable')
+            while (record = parser.read()) {
+                if (streamIsClosed) break;
+
+                parser.onRecord(record as T)
+            }
+        });
+        this.parser = parser
         this.parser.on('error', function (err: Error) {
             console.error(err.message);
         });
 
     }
     on(event: string, cb: { (...args: any[]): void; }): this {
-        this.parser.on(event, cb);
+        if (event === 'record') {
+            this.parser.onRecord = cb
+        } else {
+            this.parser.on(event, cb);
+        }
         return this;
     }
 
-    async fromRequest(req: Request): Promise<Response> {
+    async stream(req: Request): Promise<Response> {
         let res = await fetch(req);
-        return this.transform(res);
-    }
-
-    process(res: Response,
-        onRecord: { (record: T): void },
-        onDone: { (): void } = () => {
-            return
-        },
-
-    ): void {
         if (!res || !res.body) {
-            return;
+            return Promise.reject(new Error('invalid response ' + res.statusText));
         }
-
-        let streamIsClosed = false,
-            reader = res.body.getReader(), parser = this.parser;
-
-
-        parser.on('readable', (record: T) => {
-            while (record = parser.read()) {
-                if (streamIsClosed) break;
-                onRecord(record)
-            }
-        });
-
-
-        function processText(): Promise<void> {
-            return reader.read()
-                .then(({ done, value }: ReadableStreamDefaultReadResult<Uint8Array>): void | Promise<void> => {
-                    if (done) {
-                        streamIsClosed = true;
-                        onDone()
-                        parser.end();
-
-                        return
-                    }
-
-
-                    //console.log('promisedWrite to parser')
-                    return parser.promisedWrite(value).then(() => processText())
-                }).catch((err: unknown) => {
-                    console.error(err);
-                    return processText()
-                });
-        }
-        processText()
-
+        res.body.pipeThrough(this)
+        return new Response(this.readable, {
+            headers: this.extraHeaders
+        })
     }
+
+
     async parse(res: Response): Promise<T[]> {
         if (!res || !res.body) {
             return Promise.resolve(this.parsedArray);
@@ -128,15 +154,16 @@ export class StreamingCSVParser<T extends TRowType = TRowType> {
             streamIsClosed = false
         const writer = writable.getWriter()
 
-        this.process(res, (record) => {
-            let chukifiedRecord = encoder.encode(this.separator + JSON.stringify(record));
-            writer.write(chukifiedRecord);
-            this.separator = ',';
-        }, () => {
-            writer.write(encoder.encode(']'));
-            writer.close();
+        this.process(res,
+            (record) => {
+                let chukifiedRecord = encoder.encode(this.separator + JSON.stringify(record));
+                writer.write(chukifiedRecord);
+                this.separator = ',';
+            }).then(() => {
+                writer.write(encoder.encode(']'));
+                writer.close();
 
-        })
+            })
 
 
 

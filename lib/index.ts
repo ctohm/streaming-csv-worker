@@ -1,2 +1,5 @@
 export { StreamingCSVParser } from './StreamingCSVParser'
-export { FetchPapaStreamer } from './FetchPapaStreamer'
+import { FetchPapaStreamer, TransformStreamer, default as Papa } from './TransformStreamer'
+
+export { FetchPapaStreamer, TransformStreamer }
+export default Papa

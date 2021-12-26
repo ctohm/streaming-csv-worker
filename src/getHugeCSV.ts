@@ -5,9 +5,17 @@ export function getHugeCSVRequest(req: Request): Request {
     return newReq;
 
 }
+export function getMediumCSVRequest(req: Request): Request {
+
+    let newReq = new Request("https://www.ishares.com/us/products/264615/ishares-core-total-usd-bond-market-etf/1467271812596.ajax?fileType=csv&fileName=IUSB_holdings&dataType=fund", req);
+    newReq.headers.set('cache-control', 'no-cache');
+    return newReq;
+
+}
+
 export function getSmallCSVRequest(req: Request): Request {
 
-    let newReq = new Request("https://www.ishares.com/us/products/239566/ishares-iboxx-investment-grade-corporate-bond-etf/1467271812596.ajax?fileType=csv&fileName=LQD_holdings&dataType=fund", req);
+    let newReq = new Request("https://www.ishares.com/us/products/239738/ishares-global-clean-energy-etf/1467271812596.ajax?fileType=csv&dataType=fund", req);
     newReq.headers.set('cache-control', 'no-cache');
     return newReq;
 
