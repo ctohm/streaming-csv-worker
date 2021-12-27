@@ -1,4 +1,5 @@
-export async function onRequestOptions({ request }: { request: Request }) {
+
+export const onRequestOptions: PagesFunction = async ({ request }: { request: Request }) => {
 
     return new Response(null, {
         headers: {
@@ -9,6 +10,7 @@ export async function onRequestOptions({ request }: { request: Request }) {
         },
     });
 }
+
 function getHugeCSV(req: Request): Request {
 
     let newReq = new Request("https://www.ishares.com/us/products/239756/ishares-growth-allocation-etf/1467271812596.ajax?fileType=csv&fileName=AOR_holdings&dataType=fund", req);

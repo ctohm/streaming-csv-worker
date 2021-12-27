@@ -21,7 +21,7 @@
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
     "build:dev": "NODE_ENV=development node esbuild.mjs",
     "build:worker": "esbuild   --format=esm src/worker.ts --outfile=dist/worker.mjs",
-    "miniflare": "miniflare dist/worker.mjs -d -w"
+    "miniflare": "NODE_ENV=development miniflare dist/worker.mjs -d -w"
   },
   "author": {
     "email": "ffigueroa@ctohm.com",
@@ -33,12 +33,15 @@
   ],
   "license": "UNLICENSED",
   "version": "1.0.3",
-  "dependencies": {},
+  "dependencies": {
+    "streamsaver": "^2.0.5"
+  },
   "devDependencies": {
-    "@cloudflare/workers-types": "^2.2.2",
+    "@cloudflare/workers-types": "^3.3.0",
     "@esbuild-plugins/node-globals-polyfill": "^0.1.1",
     "@esbuild-plugins/node-modules-polyfill": "^0.1.2",
     "@types/papaparse": "^5.2.6",
+    "@types/streamsaver": "^2.0.1",
     "ava": "^3.15.0",
     "csv-parse": "^4.16.0",
     "esbuild": "^0.12.17",
@@ -49,5 +52,8 @@
   "peerDependencies": {
     "@fast-csv/parse": "^4.3.6",
     "vitepress": "^0.20.9"
+  },
+  "optionalDependencies": {
+    "wrangler": "^0.0.6"
   }
 }

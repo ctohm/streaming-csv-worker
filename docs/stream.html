@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <script src="/papaparse.js"></script>
+
+    <script type="application/javascript">
+        const po = new PerformanceObserver((list) => {
+            let newEntries = list.getEntries().map(
+                /**
+                 * @param {PerformanceEntry} entry
+                 **/
+                (entry) => {
+                    let { name, workerStart, transferSize, responseStart, entryType, } = entry;
+
+                    return { entryType, name, workerStart, transferSize, responseStart };
+                });
+            console.log(newEntries);
+            return newEntries;
+        });
+        // Start listening for `resource` entries to be dispatched.
+        po.observe({ entryTypes: ['resource', 'mark', 'measure'] });
+
+        function downloadBlob(blob, fileName = 'file.txt') {
+            // Convert your blob into a Blob URL (a special url that points to an object in the browser's memory)
+            const blobUrl = URL.createObjectURL(blob);
+
+            console.log(performance.measure('Download Complete', 'Sending Fetch'))
+            console.log(blobUrl)
+
+
+        }
+         performance.mark('Sending Fetch')
+        
+        fetch('https://csv.cf-badger.com/csv/stream')
+            .then(async res => {
+                let stringified=await res.text()
+             console.log(performance.measure('Download Finished', 'Sending Fetch'))
+
+           
+              
+                
+                return fetch('https://csv.riff.one/files/upload', { method: 'POST',
+                 body: stringified, 
+                mode: "cors", //headers: { 'Content-Type': 'application/json' } }
+            }).then(res => {
+                    console.log(performance.measure('Upload Complete', 'Sending Fetch'))
+                    po.disconnect()
+                    return Object.fromEntries(res.headers)
+
+                })
+            });
+
+
+
+
+    </script>
+</head>
+
+<body>
+</body>
+
+</html>

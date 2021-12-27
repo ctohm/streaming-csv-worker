@@ -1,5 +1,6 @@
 import parse from 'csv-parse/lib/browser';
 import type { Buffer, BufferEncoding } from 'worktop/buffer';
+import { HeadersWithTimings } from '../src/HeadersWithTimings';
 type ParserOptions = parse.Options
 
 
@@ -42,8 +43,8 @@ class ParserPlus<T> extends parse.Parser {
 export class StreamingCSVParser<T extends TRowType = TRowType> extends TransformStream<Uint8Array, Uint8Array> {
     parsedArray: T[]
     parser: ParserPlus<T>
-    extraHeaders: Headers
-    constructor(options: TParserExtendedOptions, extraHeaders: { [s: string]: string } = {}) {
+    responseHeaders?: HeadersWithTimings
+    constructor(options: TParserExtendedOptions, extraHeaders?: Headers | HeadersInit) {
         let separator = '',
             finalChar = '',
             streamIsClosed = false
@@ -81,6 +82,7 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
                     console.log('called flush')
                     streamIsClosed = true;
                     parser.end();
+
                     if (finalChar === '') {
                         finalChar = ']'
                         controller.enqueue(finalChar)
@@ -90,25 +92,47 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
             }
         super({ ...transformContent })
         this.parsedArray = [] as T[]
-        this.extraHeaders = new Headers(extraHeaders)
-        this.extraHeaders.set('content-type', 'application/json;charset=UTF-8')
-        parser.onRecord = (record: T) => {
+        if (extraHeaders) this.responseHeaders = HeadersWithTimings.createFrom(extraHeaders)
+
+        parser.on('data', (record: T) => {
             if (!parser.controller) return
+
             parser.controller.enqueue(textencoder.encode(separator + JSON.stringify(record)))
             separator = ','
-        }
-        parser.on('readable', (record: unknown) => {
-            if (separator === '') console.log(Date.now() + ' internal:onreadable')
-            while (record = parser.read()) {
-                if (streamIsClosed) break;
-
-                parser.onRecord(record as T)
+        })
+        parser.on('readable', () => {
+            if (separator === '' && this.responseHeaders) {
+                this.responseHeaders.appendPartialTiming('source_csv.parser_readable')
             }
-        });
+        })
+        parser.on('finish', () => {
+            console.log('event:finish')
+        })
+        parser.on('close', () => {
+            console.log('event:close')
+        })
+        parser.on('end', () => {
+            console.log('event:end')
+        })
         this.parser = parser
         this.parser.on('error', function (err: Error) {
             console.error(err.message);
         });
+        this.parser.on('close', () => {
+            if (this.responseHeaders) {
+                this.responseHeaders.appendPartialTiming('source_csv.close')
+            } else {
+                console.trace('NO responseHeaders')
+            }
+        })
+
+        this.parser.on('end', () => {
+            if (this.responseHeaders) {
+                this.responseHeaders.appendPartialTiming('source_csv.end')
+            } else {
+                console.trace('NO responseHeaders')
+            }
+        })
 
     }
     on(event: string, cb: { (...args: any[]): void; }): this {
@@ -121,13 +145,22 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
     }
 
     async stream(req: Request): Promise<Response> {
+
+        const started_at = req.headers.get('started_at'),
+            startTime = req.headers.get('startTime')
+        this.responseHeaders = HeadersWithTimings.createFrom(this.responseHeaders || { startTime, started_at } as Record<string, string>)
+
         let res = await fetch(req);
         if (!res || !res.body) {
             return Promise.reject(new Error('invalid response ' + res.statusText));
         }
+
+
+        this.responseHeaders.set('content-type', 'application/json;charset=UTF-8')
+
         res.body.pipeThrough(this)
         return new Response(this.readable, {
-            headers: this.extraHeaders
+            headers: this.responseHeaders
         })
     }
 
@@ -136,41 +169,17 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
         if (!res || !res.body) {
             return Promise.resolve(this.parsedArray);
         }
+        this.parser.on('data', (record: T) => {
+            this.parsedArray.push(record);
+        })
+        res.body.pipeThrough(this)
         return new Promise((resolve, reject) => {
-            this.process(res, (record) => {
-                this.parsedArray.push(record);
-            }, () => {
+            this.parser.on('end', (record: T) => {
                 resolve(this.parsedArray)
             })
+
+
         });
 
-    }
-    transform(res: Response): Response {
-        if (!res || !res.body) {
-            return res;
-        }
-        let encoder = new TextEncoder()
-        let { readable, writable } = new TransformStream<Uint8Array, Uint8Array>(),
-            streamIsClosed = false
-        const writer = writable.getWriter()
-
-        this.process(res,
-            (record) => {
-                let chukifiedRecord = encoder.encode(this.separator + JSON.stringify(record));
-                writer.write(chukifiedRecord);
-                this.separator = ',';
-            }).then(() => {
-                writer.write(encoder.encode(']'));
-                writer.close();
-
-            })
-
-
-
-        this.extraHeaders.set('content-type', 'application/json;charset=UTF-8')
-        return new Response(
-            readable, {
-            headers: this.extraHeaders
-        });
     }
 }

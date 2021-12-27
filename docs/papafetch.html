@@ -2,55 +2,18 @@
 <html>
 
 <head>
-    <script src="/papaparse.js"></script>
+    <script src="/xhr.js"></script>
 
     <script type="application/javascript">
-        const po = new PerformanceObserver((list) => {
-            let newEntries = list.getEntries().map(
-                /**
-                 * @param {PerformanceEntry} entry
-                 **/
-                (entry) => {
-                    let { name, workerStart, transferSize, responseStart, entryType, } = entry;
+      performance.mark('XHROrFetch:start')
 
-                    return { name, workerStart, transferSize, responseStart };
-                });
-            console.log(newEntries);
-            return newEntries;
-        });
-        // Start listening for `resource` entries to be dispatched.
-        po.observe({ entryTypes: ['resource', 'mark', 'measure'] });
-
-        function downloadBlob(blob, fileName = 'file.txt') {
-            // Convert your blob into a Blob URL (a special url that points to an object in the browser's memory)
-            const blobUrl = URL.createObjectURL(blob);
-
-            console.log(performance.measure('Download Complete', 'Sending Fetch'))
-            console.log(blobUrl)
-
-
-        }
-         performance.mark('Sending Fetch')
-        
-        fetch('https://csv.cf-badger.com/csv/papa')
-            .then(res => {
-             console.log(performance.measure('Download Finished', 'Sending Fetch'))
-
-           
-              
-                
-                return fetch('https://enb0bv0jnal2p.x.pipedream.net', { method: 'POST',
-                 body: res.body, 
-                mode: "cors", //headers: { 'Content-Type': 'application/json' } }
-            }).then(res => {
-                    console.log(performance.measure('Upload Complete', 'Sending Fetch'))
-                    po.disconnect()
-                    return Object.fromEntries(res.headers)
-
-                })
-            });
-
-
+fetch('https://csv.cf-badger.com/csv/papa')
+    .then(async res => {
+        let stringified=await res.text()
+        performance.mark('XHROrFetch:finish')
+        performance.measure('Download Finished', 'XHROrFetch:start', 'XHROrFetch:finish')
+        return uploadStringified(stringified)
+    });
 
 
     </script>

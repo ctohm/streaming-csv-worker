@@ -4,7 +4,7 @@ const IS_WORKER = false,
 var workers = {}, workerIdCounter = 0;
 import type { PapaConfig, ParseConfig, GuessableDelimiters, ParseResult, NODE_STREAM_INPUT_TYPE, ParseMeta, ParseError } from 'papaparse'
 import { default as PapaDefault, ParserHandle, Parser } from 'papaparse'
-import { FetchPapaStreamer } from './FetchPapaStreamer';
+import { FetchPapaStreamer, createEmptyResult } from './FetchPapaStreamer';
 export { FetchPapaStreamer }
 /**
  * Modified FetchStreamer, in which fetch and WhatWg streams replace XMLHttpRequest and its progress event
@@ -104,11 +104,7 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 
 
 
-		this._completeResults = {
-			data: [] as unknown[],
-			errors: [] as ParseError[],
-			meta: {} as ParseMeta,
-		} as unknown as ParseResult<unknown>;
+		this._completeResults = createEmptyResult()
 
 		config.withCredentials = config.withCredentials || 'same-origin'
 		this.decoder = new TextDecoder();
@@ -146,20 +142,8 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 
 		if (isFunction(this._config.chunk)) {
 			this._config.chunk(results);
-
-
-			results = {
-				data: [] as unknown[],
-				errors: [] as ParseError[],
-				meta: {} as ParseMeta,
-			} as unknown as ParseResult<unknown>;
-
-			this._completeResults = {
-				data: [] as unknown[],
-				errors: [] as ParseError[],
-				meta: {} as ParseMeta,
-			} as unknown as ParseResult<unknown>;
-
+			results = createEmptyResult()
+			this._completeResults = createEmptyResult()
 		}
 		if (
 			/**
@@ -244,15 +228,6 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 		this._config = configCopy;	// persist the copy to the caller
 	}
 
-}
-
-
-
-
-
-/** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions */
-function escapeRegExp(str: string) {
-	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
 }
 
 

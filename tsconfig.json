@@ -16,7 +16,7 @@
      "esModuleInterop": true,
     "declarationMap": true,
     "types": [
-      "@cloudflare/workers-types"
+      "@cloudflare/workers-types","chrome"
     ],
     "rootDirs": ["./src","./test"],
     "noImplicitAny": true,
@@ -35,7 +35,8 @@
     "./lib/*.d.ts",
     "./lib/*.ts",
     "./functions/*.ts",
-    "./functions/**/*.ts"
+    "./functions/**/*.ts",
+    "./node_modules/@cloudflare/workers-types/index.d.ts"
    ],
   "exclude": [
     "node_modules/",

@@ -2,84 +2,122 @@
 import { StreamingCSVParser } from './StreamingCSVParser'
 
 //import Papa from '../lib/papaparse_with_fetch'
-import { default as Papa, TransformStreamer } from './TransformStreamer'
+import { default as Papa, TransformStreamer, FetchPapaStreamer } from '.'
 import { getHugeCSVRequest, getSmallCSVRequest, getCSVPassThrough, getMediumCSVRequest } from './getHugeCSV';
 import { getPapaXHR } from './getPapaXHR';
+import { HeadersWithTimings } from './HeadersWithTimings';
 
 const faviconSvg = `<svg width="256.8" height="256.24" version="1.1" viewBox="0 0 67.946032 67.796278" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
 <ellipse cx="68.186" cy="219.86" rx="8.4048" ry="7.7212" fill="url(#a)" stroke="#25b244" stroke-width="3.237"/>
 </svg>`;
 
-
-async function getWithPapaParse(req: Request): Promise<Response> {
+async function getWithTransformStreamer(req: Request): Promise<Response> {
     console.log('TransformStreamer')
-    const transformStreamer = new TransformStreamer({
-        download: true, skipEmptyLines: 'greedy'
+    const init = {
+        started_at: req.headers.get('started_at'),
+        'startTime': req.headers.get('startTime'),
+        'content-type': 'application/json',
+        'cache-control': 'no-cache, no-store, s-maxage=0, max-age=0',
 
-    }),
-        res = await fetch(req)
+    },
+        headers = new HeadersWithTimings(init as Record<string, string>),
+        transformStreamer = new TransformStreamer({
+            download: true, skipEmptyLines: 'greedy'
+        })
+    headers.appendPartialTiming('origin_csv:start')
+
+    let res = await fetch(req)
+    headers.appendPartialTiming('origin_csv:ttfb')
+
     if (!res.ok || !res.body) {
         throw new Error("Couldn't obtain readable body")
     }
+
     res.body.pipeThrough(transformStreamer)
 
     return new Response(
         transformStreamer.readable, {
-        headers: {
-            'content-type': 'application/json',
-            'cache-control': 'no-cache, no-store, s-maxage=0',
-
-        }
+        headers
     });
 
 }
 
-async function getWithPapaParseStreamMethod(req: Request): Promise<Response> {
-    console.log('getWithPapaParseStreamMethod');
-    console.time('fetch:getWithPapaParseStreamMethod');
+async function getWithFetchStreamer(req: Request): Promise<Response> {
+    console.log('getWithFetchStreamer');
+    console.time('fetch:getWithFetchStreamer');
+    const init = {
+        started_at: req.headers.get('started_at'),
+        'startTime': req.headers.get('startTime'),
+        'content-type': 'application/json',
+        'cache-control': 'no-cache, no-store, s-maxage=0, max-age=0',
+    }
 
+    let separator = '['
     console.time('Papaparse');
 
+    let encoder = new TextEncoder(),
+        transformStream = new TransformStream<Uint8Array, Uint8Array>()
 
+    let { readable, writable } = transformStream
 
-    return Papa.parse(req, {
+    const writer = writable.getWriter(),
+        headers = new HeadersWithTimings(init as Record<string, string>)
+    headers.appendPartialTiming('source_csv.start')
+
+    const originRes = await fetch(req)
+
+    let res = new Response(
+        readable, {
+        headers
+    });
+
+    new FetchPapaStreamer({
         download: true,
-        //  preview: 10,
-
-
-    })
+        beforeFirstChunk: (chunk) => {
+            headers.appendPartialTiming('source_csv:ttfb')
+            return chunk
+        },
+        chunk: (result) => {
+            writer.write(encoder.encode(separator + JSON.stringify(result.data)));
+            separator = ',';
+        },
+        complete: (result) => {
+            console.timeEnd('Papaparse');
+            writer.write(encoder.encode(']'));
+            writer.close();
+            headers.appendPartialTiming('source_csv:complete')
+        }
+    }).stream(originRes)
+    return res
 
 
 }
-async function getWithStreamingCSV(req: Request): Promise<Response> {
-    const t_ini = Date.now(),
-        isSmallCsv = req.url.includes('invesco')
-    //console.time('fetch');
-    console.log({ url: req.url })
-    //  const res = await fetch(req)
-    console.timeEnd('fetch');
-    let firstLine = true
-    console.time('StreamingCSVParser');
+async function getWithStreamingCSVParser(req: Request): Promise<Response> {
+    const init = {
+        started_at: req.headers.get('started_at'),
+        'startTime': req.headers.get('startTime'),
+        'content-type': 'application/json',
+        'cache-control': 'no-cache, no-store, s-maxage=0, max-age=0',
+    },
+        headers = new HeadersWithTimings(init as Record<string, string>)
+
     return new StreamingCSVParser({
-        delimiter: isSmallCsv ? ',' : ',',
-        from_line: isSmallCsv ? 1 : 10,
+        delimiter: ',',
+        from_line: 10,
         skip_lines_with_error: true,
 
-    }, {
-        started_at: String(t_ini),
-        'Content-Type': 'application/json',
-        'cache-control': 'no-cache, no-store, s-maxage=1, max-age=1'
-    })
-        .on('readable', () => {
-            if (firstLine) {
-                firstLine = false;
-                console.log(Date.now() + ' on record')
-            }
-        })
+    },
+        headers
+    )
+
         .stream(req)
 
 
 }
+/**
+ * 
+ * @returns {Response}
+ */
 function getFavicon(): Response {
     return new Response(faviconSvg, { headers: { 'Content-Type': 'image/svg+xml' } })
 }
@@ -95,21 +133,24 @@ export default {
         if (request.method.toLowerCase().includes('option')) return new Response('', {
             headers: {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Headers': 'Range',
+                "Access-Control-Allow-Headers": 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Range, Content-Range, Content-MD5, Content-Type, Date, X-Api-Version',
                 'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range',
             }
         })
+
         const url = new URL(request.url)
         if (url.pathname.includes('favicon')) return getFavicon()
 
         if (url.pathname.includes('xhr')) return new Response(getPapaXHR(), { headers: { 'content-type': 'text/html; charset=utf-8' } })
-        if (url.pathname.includes('transform')) return getWithPapaParse(getMediumCSVRequest(request))
-        //new Request('https://csv.riff.one/files/ishares'))
-        if (url.pathname.includes('csvparse')) return getWithStreamingCSV(getMediumCSVRequest(request))
-        if (url.pathname.includes('stream')) return getWithPapaParseStreamMethod(getMediumCSVRequest(request))
-        //new Request('https://csv.riff.one/files/ishares'))
+        if (url.pathname.includes('transform')) return getWithTransformStreamer(getMediumCSVRequest(request))
+
+        if (url.pathname.includes('csvparse')) return getWithStreamingCSVParser(getMediumCSVRequest(request))
+        if (url.pathname.includes('fetch')) return getWithFetchStreamer(getMediumCSVRequest(request))
+
         if (url.pathname.includes('raw')) return getCSVPassThrough(getMediumCSVRequest(request))
+        //@ts-ignore
         const headerEntries = Object.fromEntries(request.headers)
+        //@ts-ignore
         return new Response(JSON.stringify({ cf: { ...request.cf }, ...headerEntries, method: request.method }), {
             headers: {
                 'Content-Type': 'application/json',

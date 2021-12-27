@@ -2,82 +2,12 @@
 <html>
 
 <head>
-    <script src="/papaparse.js"></script>
+    <script src="/xhr.js"></script>
 
     <script type="application/javascript">
-        const po = new PerformanceObserver((list) => {
-            let newEntries = list.getEntries().map(
-                /**
-                 * @param {PerformanceEntry} entry
-                 **/
-                (entry) => {
-                    let { name, workerStart, transferSize, responseStart, entryType, } = entry;
-
-                    return { name, workerStart, transferSize, responseStart };
-                });
-            console.log(newEntries);
-            return newEntries;
-        });
-        // Start listening for `resource` entries to be dispatched.
-        po.observe({ entryTypes: ['resource', 'mark', 'measure'] });
-
-        function downloadBlob(blob, fileName = 'file.txt') {
-            // Convert your blob into a Blob URL (a special url that points to an object in the browser's memory)
-            const blobUrl = URL.createObjectURL(blob);
-
-            console.log(performance.measure('Download Complete', 'Sending XHR'))
-            console.log(blobUrl)
-
-
-        }
-        async function getWithPapaParse(req) {
-
-            Papa.RemoteChunkSize = 7 * 1024 * 1024;
-            let startXhrMark, completeMark, frMark;
-
-
-            return new Promise((resolve, reject) => {
-                startXhrMark = performance.mark('Sending XHR')
-                let timerOpen = true, parsed = []
-                Papa.parse(req.url, {
-                    download: true,
-                    chunkSize: 7 * 1024 * 1024,
-                    beforeFirstChunk: (chunk) => {
-                        console.log(performance.measure('Download Finished', 'Sending XHR'))
-                        return chunk
-                    },
-                    step: (result) => {
-                        parsed.push(result.data)
-                        if (timerOpen) {
-                            timerOpen = false;
-                            console.log(performance.measure('First Row', 'Sending XHR'))
-
-                        }
-
-                    },
-                    complete: () => {
-                        console.log(performance.measure('Parsed', 'Sending XHR'))
-                        resolve(JSON.stringify(parsed))
-                    }
-                })
-            })
-        }
-        let rq = new Request("https://csv.cf-badger.com/csv/raw" )
+        let rq = new Request("https://csv.cf-badger.com/csv/raw")
         getWithPapaParse(rq)
-            .then(stringified => {
-                console.log(performance.measure('stringified', 'Sending XHR'))
-
-             
-                return fetch('https://postman-echo.com/post', { method: 'POST', body: stringified, mode: "no-cors", headers: { 'Content-Type': 'application/json' } }).then(res => {
-                    console.log(performance.measure('Upload Complete', 'Sending XHR'))
-                    po.disconnect()
-                    return Object.fromEntries(res.headers)
-
-                })
-            });
-
-
-
+            .then(stringified => uploadStringified(stringified));
 
     </script>
 </head>

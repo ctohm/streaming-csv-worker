@@ -687,7 +687,7 @@ License: MIT
 			// Use chunckSize as it may be a diference on reponse lentgh due to characters with more than 1 byte
 			this._start += this._config.chunkSize ? this._config.chunkSize : xhr.responseText.length;
 			this._finished = !this._config.chunkSize || this._start >= getFileSize(xhr);
-			performance.mark('xhr.response')
+			performance.measure('xhr.response','xhr.send')
 			this.parseChunk(xhr.responseText);
 		};
 

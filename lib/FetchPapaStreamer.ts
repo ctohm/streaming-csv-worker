@@ -5,7 +5,7 @@ var workers = {}, workerIdCounter = 0;
 import type { PapaConfig, ParseConfig, GuessableDelimiters, ParseResult, NODE_STREAM_INPUT_TYPE, ParseMeta, ParseError } from 'papaparse'
 import { default as PapaDefault, ParserHandle, Parser } from 'papaparse'
 
-function createEmptyResult(): ParseResult<unknown> {
+export function createEmptyResult(): ParseResult<unknown> {
 	return {
 		data: [] as unknown[],
 		errors: [] as ParseError[],
@@ -71,36 +71,38 @@ export class FetchPapaStreamer {
 
 
 
-		this._completeResults = {
-			data: [] as unknown[],
-			errors: [] as ParseError[],
-			meta: {} as ParseMeta,
-		} as unknown as ParseResult<unknown>;
+		this._completeResults = createEmptyResult()
 
 		config.withCredentials = config.withCredentials || 'same-origin'
 		this.decoder = new TextDecoder();
 		this.replaceConfig({ chunkSize: Papa.RemoteChunkSize, ...config } as PapaConfig);
 	}
-
-	async stream(_input: string): Promise<ParseResult<unknown>> {
-
-		this._input = _input;
-		let body
-		if (this._config.downloadRequestBody) body = JSON.stringify(this._config.downloadRequestBody)
-		let req = new Request(this._input, {
-			method: this._config.downloadRequestBody ? 'POST' : 'GET',
-			credentials: this._config.withCredentials,
-			body
-		})
-		// Headers can only be set when once the request state is OPENED
-		if (this._config.downloadRequestHeaders) {
-			for (let headerName in this._config.downloadRequestHeaders) {
-				req.headers.set(headerName, this._config.downloadRequestHeaders[headerName]);
+	async stream(_input: string | Request | Response): Promise<ParseResult<unknown>> {
+		let res: Response
+		if (_input instanceof Response) {
+			res = _input
+		} else if (_input instanceof Request) {
+			console.log('input is a request')
+			res = await fetch(_input)
+		} else {
+			this._input = _input;
+			let body
+			if (this._config.downloadRequestBody) body = JSON.stringify(this._config.downloadRequestBody)
+			let req = new Request(this._input, {
+				method: this._config.downloadRequestBody ? 'POST' : 'GET',
+				credentials: this._config.withCredentials,
+				body
+			})
+			// Headers can only be set when once the request state is OPENED
+			if (this._config.downloadRequestHeaders) {
+				for (let headerName in this._config.downloadRequestHeaders) {
+					req.headers.set(headerName, this._config.downloadRequestHeaders[headerName]);
+				}
 			}
-
+			res = await fetch(req)
 		}
-		this.replaceConfig({ chunkSize: Papa.RemoteChunkSize, ...this._config } as PapaConfig);
-		const res = await fetch(req)
+
+
 		if (!res.ok || !res.body) {
 			throw new Error(res.statusText)
 		}
@@ -168,23 +170,10 @@ export class FetchPapaStreamer {
 
 
 		if (isFunction(this._config.chunk)) {
-			this._config.chunk(results, this._handle);
-			if (this._handle.paused() || this._handle.aborted()) {
-				this._halted = true;
-				return;
-			}
+			this._config.chunk(results);
 
-			results = {
-				data: [] as unknown[],
-				errors: [] as ParseError[],
-				meta: {} as ParseMeta,
-			} as unknown as ParseResult<unknown>;
-
-			this._completeResults = {
-				data: [] as unknown[],
-				errors: [] as ParseError[],
-				meta: {} as ParseMeta,
-			} as unknown as ParseResult<unknown>;
+			results = createEmptyResult()
+			this._completeResults = createEmptyResult()
 
 		}
 
@@ -199,7 +188,7 @@ export class FetchPapaStreamer {
 			&& finishedIncludingPreview
 			&& isFunction(this._config.complete)
 			&& (!results || !results.meta.aborted)) {
-			console.log({ _rowCount: this._rowCount, config: this._config, finishedIncludingPreview })
+			console.log({ _rowCount: this._rowCount, config: this._config, finishedIncludingPreview, thisChunkLength: chunk.length })
 			//console.log('sin resultados')
 			this._config.complete(this._completeResults);
 			this._completed = true;
@@ -230,14 +219,6 @@ export class FetchPapaStreamer {
 	}
 
 }
-
-
-
-/** https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions */
-function escapeRegExp(str: string) {
-	return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
-}
-
 
 
 var Papa = {
