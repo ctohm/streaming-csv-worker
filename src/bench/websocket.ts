@@ -1,5 +1,5 @@
 
-export async function websocket(url: URL, entries: unknown[], onOpen: () => void) {
+export function websocket(url: URL, entries: unknown[], onOpen: () => void) {
     let ws = new WebSocket(url);
     if (!ws) {
         throw new Error("server didn't accept ws");

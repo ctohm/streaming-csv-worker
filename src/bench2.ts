@@ -32,8 +32,12 @@ globalThis.connect(() => {
         //papaString("http://localhost:8787/csv/raw.json")
         //papaFile("http://localhost:8787/csv/raw.json")
         let filename = location.hash.replace('#', '') || 'fetch.json'
-        console.log(filename)
-        download(`/csv/${filename}`, filename, () => { listEntries() })
+        if (filename.includes('xhr')) {
+            papaXHR("/csv/raw.json", 'raw.json', () => { listEntries() })
+        } else {
+            console.log(filename)
+            download(`/csv/${filename}`, filename, () => { listEntries() })
+        }
         //download('/csv/transform.json', 'transform.json', () => { listEntries() })
         //download('/csv/fetch.json', 'fetch.json', () => { listEntries() })
 

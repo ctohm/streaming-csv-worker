@@ -7,7 +7,10 @@ import { HeadersWithTimings } from './HeadersWithTimings';
 import { websocket } from './bench/websocket';
 export interface IRequestParams {
     startTime?: string,
-    started_at?: string
+    started_at?: string,
+    ip?: string
+    sourceUrl?: string
+
 }
 type TSourceCsvParams = {
     sourceUrl: string;
@@ -16,7 +19,12 @@ type TSourceCsvParams = {
     reqHeaders: Record<string, string>;
     ip: string
 };
-
+type ErrorObject = {
+    name: string;
+    message: string;
+    url?: string;
+    stack: string[];
+};
 export class DurableWk extends IttyDurable implements DurableObject {
     [s: string]: unknown
     sessions: Map<string, WebSocket>
@@ -117,7 +125,7 @@ export class DurableWk extends IttyDurable implements DurableObject {
         return { originRes, responseHeaders, websocket }
     }
     private emitWs(websocket: WebSocket | undefined, payload: { [s: string]: string | number }): void {
-        if (websocket instanceof WebSocket) websocket.send(JSON.stringify(payload))
+        if (websocket instanceof WebSocket && websocket.readyState === websocket.OPEN) websocket.send(JSON.stringify(payload))
     }
     async handleSession(webSocket: WebSocket, ip: string) {
         //@ts-ignore
@@ -125,7 +133,7 @@ export class DurableWk extends IttyDurable implements DurableObject {
 
         let existing = this.sessions.get(ip)
         console.log({ existing })
-        if (existing && existing instanceof WebSocket) {
+        if (existing && existing instanceof WebSocket && existing.readyState === existing.OPEN) {
             console.log({ OPEN: existing.OPEN })
             return
         }
@@ -138,7 +146,7 @@ export class DurableWk extends IttyDurable implements DurableObject {
         //webSocket.addEventListener("error", () => this.sessions.delete(ip) && webSocket.close());
     }
 
-    async getWebsocketServer(ip: string): Promise<Response> {
+    async getWebsocketServer({ ip }: TSourceCsvParams): Promise<Response> {
         const [client, server] = Object.values(new WebSocketPair())
         await this.handleSession(server, ip)
         return new Response(null, {
@@ -146,5 +154,48 @@ export class DurableWk extends IttyDurable implements DurableObject {
             webSocket: client
         })
     }
+    async fetch(req: Request): Promise<Response> {
 
+
+        let method: string = req.url.split('/call/').pop() as string
+        if (method === 'getWebsocketServer') {
+            let ip = req.headers.get("CF-Connecting-IP") || '127.0.0.1';
+            return this.getWebsocketServer({ ip } as TSourceCsvParams)
+        }
+
+        let body = await req.json();
+
+
+
+        let { sourceUrl, startTime, started_at, reqHeaders, ip } = (body[0] || {}) as TSourceCsvParams,
+
+            jsonParams = { sourceUrl, startTime, started_at, reqHeaders, ip }
+
+        try {
+
+            if (typeof this[method] === 'function') {
+
+                console.log({ method })
+                // eslint-disable-next-line @typescript-eslint/ban-types
+                return (this[method] as Function)(jsonParams).then((result: unknown) => {
+                    return result instanceof Response ? result : new Response(JSON.stringify(result), {
+                        headers: {
+                            "content-type": "application/json",
+                            "cache-control": "no-cache, no-store, s-maxage=1",
+                            "access-control-allow-origin": "*"
+                        }
+                    })
+                })
+            }
+            return json(jsonParams)
+        } catch (err) {
+            const httpError = err as Error & { status: number }
+            return json(this.processError(httpError, {}), { status: httpError.status || 500 })
+        }
+    }
+    protected processError(err: Error & { status?: unknown, url?: string }, extra: { [s: string]: string | number }): ErrorObject & { eventId?: string } {
+
+        err.status = err.status || 500
+        return { name: err.name, message: err.message, url: err.url, stack: (err.stack || '').split('\n'), ...extra }
+    }
 }

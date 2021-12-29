@@ -65,14 +65,15 @@ router
         })
     })
     .get('favicon*', () => getFavicon())
-    .get('/*/ws*', (request: TRequestWithParams, env: EnvWithDurableObject) => {
+    .all('/*/ws*', (request: TRequestWithParams, env: EnvWithDurableObject) => {
         const upgradeHeader = request.headers.get("Upgrade")
         if (upgradeHeader !== "websocket") {
             return new Response("Expected websocket", { status: 400 })
         }
-        let ip = request.headers.get("CF-Connecting-IP");
+        let ip = request.headers.get("CF-Connecting-IP") || '127.0.0.1';
 
-        return getEnhancedIttyDurable<'getWebsocketServer'>(request.DurableWk, 'DurableWk').getWebsocketServer(ip)
+        return env.DurableWk.get(env.DurableWk.idFromName('DurableWk')).fetch(`https://streaming-csv-worker/call/getWebsocketServer`, request)
+
     })
     .get('/*/transform*', (request: TRequestWithParams) => {
         const sourceCSVReq = getMediumCSVRequest(request)
