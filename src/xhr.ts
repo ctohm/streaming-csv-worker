@@ -12,24 +12,32 @@ import type { TbriefEntry } from './bench/observers'
 export let entries = [] as TbriefEntry[]
 
 const { po, ro, listEntries } = initObservers(entries)
-const url = new URL(window.location.origin)
-url.protocol = 'wss'
-url.pathname = "/csv/ws"
-globalThis.ws = websocket(url, entries)
+
+globalThis.connect = (cb) => {
+    const url = new URL(window.location.origin)
+    url.protocol = 'wss'
+    url.pathname = "/csv/ws"
+    globalThis.ws = websocket(url, entries, cb)
+}
 
 
 
 
-po.observe({ entryTypes: ['mark', 'measure'] });
-ro.observe({ entryTypes: ['resource'] })
+globalThis.connect(() => {
+    po.observe({ entryTypes: ['mark', 'measure'] });
+    ro.observe({ entryTypes: ['resource'] })
 
-requestIdleCallback(() => {
-    //papaXHR("/csv/raw.json", 'raw.json', () => { listEntries() })
-    //papaString("http://localhost:8787/csv/raw.json")
-    //papaFile("http://localhost:8787/csv/raw.json")
+    requestIdleCallback(() => {
+        //papaXHR("/csv/raw.json", 'raw.json', () => { listEntries() })
+        //papaString("http://localhost:8787/csv/raw.json")
+        //papaFile("http://localhost:8787/csv/raw.json")
+        let filename = location.hash.replace('#', '') || 'fetch.json'
+        console.log(filename)
+        download(`/csv/${filename}`, filename, () => { listEntries() })
+        //download('/csv/transform.json', 'transform.json', () => { listEntries() })
+        //download('/csv/fetch.json', 'fetch.json', () => { listEntries() })
 
-    download('/csv/csvparse.json', 'csvparse.json', () => { listEntries() })
-    //download('/csv/transform.json', 'transform.json', () => { listEntries() })
-    //download('/csv/fetch.json', 'fetch.json', () => { listEntries() })
+    });
 
-});
+})
+

@@ -4,6 +4,7 @@ import { default as Papa, TransformStreamer } from './lib/TransformStreamer'
 import { StreamingCSVParser } from './lib/StreamingCSVParser';
 import { FetchPapaStreamer } from './lib/FetchPapaStreamer'
 import { HeadersWithTimings } from './HeadersWithTimings';
+import { websocket } from './bench/websocket';
 export interface IRequestParams {
     startTime?: string,
     started_at?: string
@@ -43,7 +44,7 @@ export class DurableWk extends IttyDurable implements DurableObject {
             },
             complete: (result) => {
                 console.timeEnd('fetch:getWithFetchStreamer');
-                if (websocket instanceof WebSocket) websocket.send(JSON.stringify(responseHeaders.appendPartialTiming('fetchStreamer.complete')))
+                this.emitWs(websocket, responseHeaders.appendPartialTiming('fetchStreamer.complete'))
                 writer.write(encoder.encode(']'));
                 writer.close();
             }
@@ -64,7 +65,7 @@ export class DurableWk extends IttyDurable implements DurableObject {
         if (!originRes.body) throw new Error('Could not get a parsable body')
         originRes.body.pipeTo(transformStreamer.writable).then(() => {
             console.timeEnd('TransformStreamer')
-            if (websocket instanceof WebSocket) websocket.send(JSON.stringify(responseHeaders.appendPartialTiming('TransformStreamer.end')))
+            this.emitWs(websocket, responseHeaders.appendPartialTiming('TransformStreamer.end'))
         })
 
         return new Response(
@@ -88,7 +89,7 @@ export class DurableWk extends IttyDurable implements DurableObject {
 
         originRes.body.pipeTo(streamingCSVParser.writable).then(() => {
             console.timeEnd('StreamingCSVParser')
-            if (websocket instanceof WebSocket) websocket.send(JSON.stringify(responseHeaders.appendPartialTiming('source_csv.end')))
+            this.emitWs(websocket, responseHeaders.appendPartialTiming('source_csv.end'))
         })
 
         return new Response(
@@ -107,21 +108,34 @@ export class DurableWk extends IttyDurable implements DurableObject {
             'cache-control': 'no-cache, no-store, s-maxage=0, max-age=0',
         }
         const responseHeaders = new HeadersWithTimings(init as Record<string, string>)
-        if (websocket instanceof WebSocket) websocket.send(JSON.stringify(responseHeaders.appendPartialTiming('source_csv.sent_request')))
+        this.emitWs(websocket, responseHeaders.appendPartialTiming('source_csv.sent_request'))
         const originRes = await fetch(sourceUrl, { headers: reqHeaders })
         if (!originRes.body || !originRes.ok) {
             throw new Error(originRes.statusText)
         }
-        if (websocket instanceof WebSocket) websocket.send(JSON.stringify(responseHeaders.appendPartialTiming('source_csv.got_response')))
+        this.emitWs(websocket, responseHeaders.appendPartialTiming('source_csv.got_response'))
         return { originRes, responseHeaders, websocket }
+    }
+    private emitWs(websocket: WebSocket | undefined, payload: { [s: string]: string | number }): void {
+        if (websocket instanceof WebSocket) websocket.send(JSON.stringify(payload))
     }
     async handleSession(webSocket: WebSocket, ip: string) {
         //@ts-ignore
         webSocket.accept()
-        if (this.sessions.has(ip)) return
+
+        let existing = this.sessions.get(ip)
+        console.log({ existing })
+        if (existing && existing instanceof WebSocket) {
+            console.log({ OPEN: existing.OPEN })
+            return
+        }
         this.sessions.set(ip, webSocket)
-        webSocket.addEventListener("close", () => this.sessions.delete(ip) && webSocket.close());
-        webSocket.addEventListener("error", () => this.sessions.delete(ip) && webSocket.close());
+        webSocket.addEventListener("close", () => {
+            this.sessions.delete(ip)
+            webSocket.close(1011, "WebSocket close");
+        });
+        return webSocket
+        //webSocket.addEventListener("error", () => this.sessions.delete(ip) && webSocket.close());
     }
 
     async getWebsocketServer(ip: string): Promise<Response> {

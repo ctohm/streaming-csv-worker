@@ -20,7 +20,7 @@
     "deploy": "rm -rf dist/* &&  yarn transpile && yarn build &&    yarn publish",
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
     "build:dev": "NODE_ENV=development node esbuild.mjs",
-     "miniflare": "NODE_ENV=development miniflare dist/worker.mjs -d -w  -o DurableWk=DurableWk"
+    "miniflare": "NODE_ENV=development miniflare dist/worker.mjs -d -w  -o DurableWk=DurableWk"
   },
   "author": {
     "email": "ffigueroa@ctohm.com",
@@ -52,10 +52,7 @@
     "papaparse": "^5.3.1",
     "worktop": "0.8.0-next.5"
   },
-  "peerDependencies": {
-    "@fast-csv/parse": "^4.3.6",
-    "vitepress": "^0.20.9"
-  },
+  "peerDependencies": {},
   "optionalDependencies": {
     "wrangler": "^0.0.6"
   }

@@ -99,7 +99,7 @@ self.addEventListener('install', () => {
 }
 
 
-  self.addEventListener('fetch', async (event)=> {
+  /*self.addEventListener('fetch', async (event)=> {
     console.log('Handling fetch event for', event.request.url);
     const url = event.request.url
     const hijacke = map.get(url)
@@ -109,12 +109,12 @@ self.addEventListener('install', () => {
       return event.respondWith(  getCSVPassThrough(getMediumCSVRequest(event.request)))
     }
     return null
-  })
+  })*/
   
   
   self.onfetch = event => {
     const url = event.request.url
-  console.log({onfetch:url})
+  
     // this only works for Firefox
     if (url.endsWith('/ping')) {
       return event.respondWith(new Response('pong'))
@@ -123,7 +123,7 @@ self.addEventListener('install', () => {
     const hijacke = map.get(url)
   
     if (!hijacke) return null
-  
+    console.log({onfetch:url})
     const [ stream, data, port ] = hijacke
   
     map.delete(url)
