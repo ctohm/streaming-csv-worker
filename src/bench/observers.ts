@@ -20,7 +20,7 @@ export function initObservers(entries: unknown[]) {
     })
     const ro = new PerformanceObserver((list) => {
         list.getEntriesByType('resource').forEach((entry) => {
-            let { startTime, duration, name, entryType, responseStart, responseEnd, serverTiming } = entry as PerformanceResourceTiming
+            let { startTime, duration, name, entryType, responseStart, responseEnd, serverTiming, initiatorType } = entry as PerformanceResourceTiming
             if (name.includes('mitm') || name.includes('favicon')) return
             startTime = Math.floor(startTime)
             duration = Math.floor(duration)
@@ -36,21 +36,21 @@ export function initObservers(entries: unknown[]) {
             })
             entries = entries.concat([
                 {
-                    name: 'download:request_sent',
+                    name: `${initiatorType}:request_sent`,
                     startTime,
                     duration: 0,
                     endTime: startTime,
                     entryType: 'mark'
                 },
                 {
-                    name: 'download:response_start',
+                    name: `${initiatorType}:response_start`,
                     startTime,
                     duration: responseStart - startTime,
                     endTime: responseStart,
                     entryType: 'resource'
                 },
                 {
-                    name: 'download:response_complete',
+                    name: `${initiatorType}:response_complete`,
                     startTime: responseStart - startTime,
                     duration: responseEnd - responseStart,
                     endTime: responseEnd,
