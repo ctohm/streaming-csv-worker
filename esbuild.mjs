@@ -31,7 +31,7 @@ let optionsStatic = buildOptions(
         format: 'iife',
         outdir: 'docs',
         sourcemap: false,
-        entryPoints: ['src/xhr.ts']
+        entryPoints: ['src/bench.ts']
     }),
     optionsLibEsm = buildOptions(
         {
