@@ -94,6 +94,7 @@
         // should thorw a typeError if not
         new Headers(data.headers)
       }
+      console.info({mitmHeaders:data.headers})
     
       /** @since v2.0.0 */
       if (typeof data.filename === 'string') {

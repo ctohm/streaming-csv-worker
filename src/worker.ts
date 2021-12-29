@@ -1,8 +1,5 @@
 ///
-import { StreamingCSVParser } from './StreamingCSVParser'
 
-//import Papa from '../lib/papaparse_with_fetch'
-import { default as Papa, TransformStreamer, FetchPapaStreamer } from '.'
 import { getHugeCSVRequest, getSmallCSVRequest, getCSVPassThrough, getMediumCSVRequest } from './getHugeCSV';
 import { getPapaXHR } from './getPapaXHR';
 import { HeadersWithTimings } from './HeadersWithTimings';
@@ -11,109 +8,6 @@ const faviconSvg = `<svg width="256.8" height="256.24" version="1.1" viewBox="0 
 <ellipse cx="68.186" cy="219.86" rx="8.4048" ry="7.7212" fill="url(#a)" stroke="#25b244" stroke-width="3.237"/>
 </svg>`;
 
-async function getWithTransformStreamer(req: Request): Promise<Response> {
-    console.log('TransformStreamer')
-    const init = {
-        started_at: req.headers.get('started_at'),
-        'startTime': req.headers.get('startTime'),
-        'content-type': 'application/json',
-        'cache-control': 'no-cache, no-store, s-maxage=0, max-age=0',
-
-    },
-        headers = new HeadersWithTimings(init as Record<string, string>),
-        transformStreamer = new TransformStreamer({
-            download: true, skipEmptyLines: 'greedy'
-        })
-    headers.appendPartialTiming('origin_csv:start')
-
-    let res = await fetch(req)
-    headers.appendPartialTiming('origin_csv:ttfb')
-
-    if (!res.ok || !res.body) {
-        throw new Error("Couldn't obtain readable body")
-    }
-
-    res.body.pipeThrough(transformStreamer)
-
-    return new Response(
-        transformStreamer.readable, {
-        headers
-    });
-
-}
-
-async function getWithFetchStreamer(req: Request): Promise<Response> {
-    console.log('getWithFetchStreamer');
-    console.time('fetch:getWithFetchStreamer');
-    const init = {
-        started_at: req.headers.get('started_at'),
-        'startTime': req.headers.get('startTime'),
-        'content-type': 'application/json',
-        'cache-control': 'no-cache, no-store, s-maxage=0, max-age=0',
-    }
-
-    let separator = '['
-    console.time('Papaparse');
-
-    let encoder = new TextEncoder(),
-        transformStream = new TransformStream<Uint8Array, Uint8Array>()
-
-    let { readable, writable } = transformStream
-
-    const writer = writable.getWriter(),
-        headers = new HeadersWithTimings(init as Record<string, string>)
-    headers.appendPartialTiming('source_csv.start')
-
-    const originRes = await fetch(req)
-
-    let res = new Response(
-        readable, {
-        headers
-    });
-
-    new FetchPapaStreamer({
-        download: true,
-        beforeFirstChunk: (chunk) => {
-            headers.appendPartialTiming('source_csv:ttfb')
-            return chunk
-        },
-        chunk: (result) => {
-            writer.write(encoder.encode(separator + JSON.stringify(result.data)));
-            separator = ',';
-        },
-        complete: (result) => {
-            console.timeEnd('Papaparse');
-            writer.write(encoder.encode(']'));
-            writer.close();
-            headers.appendPartialTiming('source_csv:complete')
-        }
-    }).stream(originRes)
-    return res
-
-
-}
-async function getWithStreamingCSVParser(req: Request): Promise<Response> {
-    const init = {
-        started_at: req.headers.get('started_at'),
-        'startTime': req.headers.get('startTime'),
-        'content-type': 'application/json',
-        'cache-control': 'no-cache, no-store, s-maxage=0, max-age=0',
-    },
-        headers = new HeadersWithTimings(init as Record<string, string>)
-
-    return new StreamingCSVParser({
-        delimiter: ',',
-        from_line: 10,
-        skip_lines_with_error: true,
-
-    },
-        headers
-    )
-
-        .stream(req)
-
-
-}
 /**
  * 
  * @returns {Response}
@@ -128,38 +22,140 @@ function getCSV(pathname: string, req: Request): Request {
 }
 type PagesFuncParams = Parameters<PagesFunction>[0]
 type CFRequest = PagesFuncParams['request']
-export default {
-    fetch: (request: CFRequest): Response | Promise<Response> => {
-        if (request.method.toLowerCase().includes('option')) return new Response('', {
+
+
+
+import { ThrowableRouter, missing, withParams, EnvWithDurableObject, DurableStubGetter, TRequestWithParams, json } from 'itty-router-extras'
+import { IttyDurable, withDurables } from 'itty-durable'
+
+// export the durable class, per spec
+import { DurableWk } from './DurableWk';
+import { Router } from 'itty-router';
+
+type TBadgerMethod<TMethodName extends string> = DurableWk[TMethodName] extends Function ? DurableWk[TMethodName] : { (args: unknown): Promise<Response> }
+
+type ittyWithMethod<TMethodName extends string> = { [K in TMethodName]: TBadgerMethod<TMethodName> }
+function getEnhancedIttyDurable<TMethodName extends string>(stubGetter: DurableStubGetter, nameId: string): IttyDurable & ittyWithMethod<TMethodName> {
+    return stubGetter.get(nameId) as unknown as IttyDurable & ittyWithMethod<TMethodName>
+}
+
+const router = Router()
+
+router
+    // add upstream middleware, allowing Durable access off the request
+    .all('*', withDurables())
+
+    .all('*', withParams, (request: TRequestWithParams) => {
+        request.params = request.params || {}
+        request.params.startTime = request.headers.get('startTime') || '0'
+        request.params.started_at = request.headers.get('started_at') || String(Date.now())
+        const sourceCSVReq = getSmallCSVRequest(request)
+        request.reqHeaders = Object.fromEntries(sourceCSVReq.headers)
+        request.params.sourceUrl = sourceCSVReq.url
+        request.params.ip = request.headers.get("CF-Connecting-IP");
+
+    })
+    .options('*', () => {
+        return new Response('', {
             headers: {
                 'Access-Control-Allow-Origin': '*',
                 "Access-Control-Allow-Headers": 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Range, Content-Range, Content-MD5, Content-Type, Date, X-Api-Version',
                 'Access-Control-Expose-Headers': 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range',
             }
         })
+    })
+    .get('favicon*', () => getFavicon())
+    .get('/*/ws*', (request: TRequestWithParams, env: EnvWithDurableObject) => {
+        const upgradeHeader = request.headers.get("Upgrade")
+        if (upgradeHeader !== "websocket") {
+            return new Response("Expected websocket", { status: 400 })
+        }
+        let ip = request.headers.get("CF-Connecting-IP");
 
-        const url = new URL(request.url)
-        if (url.pathname.includes('favicon')) return getFavicon()
+        return getEnhancedIttyDurable<'getWebsocketServer'>(request.DurableWk, 'DurableWk').getWebsocketServer(ip)
+    })
+    .get('/*/transform*', (request: TRequestWithParams) => {
+        const sourceCSVReq = getMediumCSVRequest(request)
+        let ip = request.headers.get("CF-Connecting-IP") || '127.0.0.1';
 
-        if (url.pathname.includes('xhr')) return new Response(getPapaXHR(), { headers: { 'content-type': 'text/html; charset=utf-8' } })
-        if (url.pathname.includes('transform')) return getWithTransformStreamer(getMediumCSVRequest(request))
-
-        if (url.pathname.includes('csvparse')) return getWithStreamingCSVParser(getMediumCSVRequest(request))
-        if (url.pathname.includes('fetch')) return getWithFetchStreamer(getMediumCSVRequest(request))
-
-        if (url.pathname.includes('raw')) return getCSVPassThrough(getMediumCSVRequest(request))
         //@ts-ignore
-        const headerEntries = Object.fromEntries(request.headers)
-        //@ts-ignore
-        return new Response(JSON.stringify({ cf: { ...request.cf }, ...headerEntries, method: request.method }), {
-            headers: {
-                'Content-Type': 'application/json',
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Expose-Headers": "*",
-                "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-                "Access-Control-Allow-Headers": 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Range, Content-Range, Content-MD5, Content-Type, Date, X-Api-Version'
-            }
+        let reqHeaders = Object.fromEntries(sourceCSVReq.headers),
+            startTime = request.headers.get('startTime') || '0',
+            started_at = request.headers.get('started_at') || String(Date.now()),
+            sourceUrl = sourceCSVReq.url
+
+        return getEnhancedIttyDurable<'getWithTransformStreamer'>(request.DurableWk, 'DurableWk').getWithTransformStreamer({
+            startTime,
+            started_at,
+            sourceUrl,
+            reqHeaders, ip
         })
+    })
+    .get('/*/xhr*', (req: TRequestWithParams) => {
+        return getCSVPassThrough(getMediumCSVRequest(req))
+
+    })
+    .get('/*/raw*', (req: TRequestWithParams) => {
+        return getCSVPassThrough(getMediumCSVRequest(req))
+
+    })
+    .get('/*/csvparse*', (request: TRequestWithParams) => {
+
+        const sourceCSVReq = getMediumCSVRequest(request)
+        let ip = request.headers.get("CF-Connecting-IP") || '127.0.0.1';
+
+        //@ts-ignore
+        let reqHeaders = Object.fromEntries(sourceCSVReq.headers),
+            startTime = request.headers.get('startTime') || '0',
+            started_at = request.headers.get('started_at') || String(Date.now()),
+            sourceUrl = sourceCSVReq.url
+
+        return getEnhancedIttyDurable<'getWithStreamingCSVParser'>(request.DurableWk, 'DurableWk').getWithStreamingCSVParser({
+            startTime,
+            started_at,
+            sourceUrl,
+            reqHeaders, ip
+        })
+    })
+    .get('/*/fetch*', (request: TRequestWithParams) => {
+        console.info(request.params,)
+        const sourceCSVReq = getMediumCSVRequest(request)
+        let ip = request.headers.get("CF-Connecting-IP") || '127.0.0.1';
+
+        //@ts-ignore
+        let reqHeaders = Object.fromEntries(sourceCSVReq.headers),
+            startTime = request.headers.get('startTime') || '0',
+            started_at = request.headers.get('started_at') || String(Date.now()),
+            sourceUrl = sourceCSVReq.url
+
+        return getEnhancedIttyDurable<'getWithFetchStreamer'>(request.DurableWk, 'DurableWk').getWithFetchStreamer({
+            startTime,
+            started_at,
+            sourceUrl,
+            reqHeaders,
+            ip
+        })
+    })
+
+    // 404 for everything else
+    .all('*', (request: TRequestWithParams & { cf: RequestInitCfProperties, headers: Headers }) => json({ url: request.url, method: request.method }, {
+        headers: {
+            'Content-Type': 'application/json',
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Expose-Headers": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Range, Content-Range, Content-MD5, Content-Type, Date, X-Api-Version'
+        }
+    }))
+export { DurableWk }
+export default {
+    fetch: (request: CFRequest, env, ctx): Response | Promise<Response> => {
+
+        return router.handle(request, env)
+            .catch(err => {
+                return json({ message: err.message, stack: String(err.stack).split('\n') })
+
+            })
 
 
     }

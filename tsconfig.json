@@ -32,12 +32,12 @@
     "./src/*.ts",
     "./test/*.d.ts",
     "./test/*.ts",
-    "./lib/*.d.ts",
-    "./lib/*.ts",
+    "./src/**/*.d.ts",
+    "./src/**/*.ts",
     "./functions/*.ts",
     "./functions/**/*.ts",
     "./node_modules/@cloudflare/workers-types/index.d.ts"
-   ],
+  ],
   "exclude": [
     "node_modules/",
     "dist/"

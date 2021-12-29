@@ -68,10 +68,53 @@ self.addEventListener('install', () => {
       }
     })
   }
+
+  function getMediumCSVRequest(req) {
+
+  let newReq = new Request("https://www.ishares.com/us/products/264615/ishares-core-total-usd-bond-market-etf/1467271812596.ajax?fileType=csv&fileName=IUSB_holdings&dataType=fund", req);
+  newReq.headers.set('cache-control', 'no-cache');
+  newReq.headers.set('started_at', String(Date.now()));
+  return newReq;
+
+}
+
+
+
+  function getCSVPassThrough(request) {
+
+
+  let start = Date.now()
+  return fetch(request).then((res) => {
+      let ttfb = Date.now()
+      res = new Response(res.body, res);
+      res.headers.set('Access-Control-Allow-Origin', '*');
+      res.headers.set('Access-Control-Allow-Headers', 'Range');
+      res.headers.set('Access-Control-Expose-Headers', 'Accept-Ranges, Content-Encoding, Content-Length, Content-Range');
+      res.headers.set('Server-Timing', `source_csv;desc="Request to source CSV";dur=${(ttfb - start)}`)
+      res.headers.set('cache-control', 'no-cache, no-store, s-maxage=0');
+      return res;
+  });
+
+
+}
+
+
+  self.addEventListener('fetch', async (event)=> {
+    console.log('Handling fetch event for', event.request.url);
+    const url = event.request.url
+    const hijacke = map.get(url)
+    if(hijacke) return self.onfetch(event)
+
+    if(url.includes('ishares')) {
+      return event.respondWith(  getCSVPassThrough(getMediumCSVRequest(event.request)))
+    }
+    return null
+  })
+  
   
   self.onfetch = event => {
     const url = event.request.url
-  
+  console.log({onfetch:url})
     // this only works for Firefox
     if (url.endsWith('/ping')) {
       return event.respondWith(new Response('pong'))
@@ -97,11 +140,17 @@ self.addEventListener('install', () => {
       'X-WebKit-CSP': "default-src 'none'",
       'X-XSS-Protection': '1; mode=block'
     })
-  
+    console.log({swHeaders:data.headers})
     let headers = new Headers(data.headers || {})
   
     if (headers.has('Content-Length')) {
       responseHeaders.set('Content-Length', headers.get('Content-Length'))
+    }
+    if (headers.has('Server-Timing')) {
+      responseHeaders.set('Server-Timing', headers.get('Server-Timing'))
+    }
+    if (headers.has('Trailer')) {
+      responseHeaders.set('Trailer', headers.get('Trailer'))
     }
   
     if (headers.has('Content-Disposition')) {

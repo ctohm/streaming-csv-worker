@@ -1,6 +1,6 @@
 import parse from 'csv-parse/lib/browser';
 import type { Buffer, BufferEncoding } from 'worktop/buffer';
-import { HeadersWithTimings } from '../src/HeadersWithTimings';
+import { HeadersWithTimings } from '../HeadersWithTimings';
 type ParserOptions = parse.Options
 
 
@@ -19,15 +19,13 @@ type TParserExtendedOptions<T extends TRowType = TRowType> = parse.Options & {
 }
 class ParserPlus<T> extends parse.Parser {
     controller!: TransformStreamDefaultController
-    onRecord: (record: T) => void
+    onRecord?: (record: T) => void
     constructor(options: TParserExtendedOptions<T>) {
         super(options)
         //this.originalWrite = this.write
         this.write = this.promisedWrite as unknown as parse.Parser['write']
 
-        this.onRecord = (record: T): void => {
-            throw new Error('not implemented')
-        }
+
     }
 
 
@@ -47,15 +45,21 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
     constructor(options: TParserExtendedOptions, extraHeaders?: Headers | HeadersInit) {
         let separator = '',
             finalChar = '',
-            streamIsClosed = false
+            streamIsClosed = false,
+            responseHeaders: HeadersWithTimings | null = null
+        if (extraHeaders) {
+            responseHeaders = HeadersWithTimings.createFrom(extraHeaders)
+        }
 
         const parser = new ParserPlus<T>(options)
         const textencoder = new TextEncoder(),
             textdecoder = new TextDecoder(),
+
             transformContent = {
 
                 start(controller: TransformStreamDefaultController): void {
                     parser.controller = controller
+                    console.log({ StreamingCSVParser: 'start' })
                     controller.enqueue('[')
 
                 },
@@ -67,10 +71,8 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
                     switch (typeof chunk) {
                         case 'object':
                             // just say the stream is done I guess
-                            if (!chunk) controller.terminate()
-
-                            let chunkText = chunk ? textdecoder.decode(chunk) : textdecoder.decode(),
-                                result = parser.promisedWrite(chunkText)
+                            if (chunk === null) controller.terminate()
+                            parser.promisedWrite(textdecoder.decode(chunk))
 
                             break
                         default:
@@ -79,10 +81,10 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
                     }
                 },
                 flush(controller: TransformStreamDefaultController): void {
-                    console.log('called flush')
                     streamIsClosed = true;
-                    parser.end();
 
+                    parser.end();
+                    if (responseHeaders) responseHeaders.appendPartialTiming('flush')
                     if (finalChar === '') {
                         finalChar = ']'
                         controller.enqueue(finalChar)
@@ -92,94 +94,85 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
             }
         super({ ...transformContent })
         this.parsedArray = [] as T[]
-        if (extraHeaders) this.responseHeaders = HeadersWithTimings.createFrom(extraHeaders)
 
-        parser.on('data', (record: T) => {
-            if (!parser.controller) return
-
+        this.parser = parser
+        let onRecord = (record: T) => {
+            if (!parser.controller || streamIsClosed) return
+            if (separator !== ',') console.log({ locked: this.readable.locked })
             parser.controller.enqueue(textencoder.encode(separator + JSON.stringify(record)))
             separator = ','
-        })
-        parser.on('readable', () => {
-            if (separator === '' && this.responseHeaders) {
-                this.responseHeaders.appendPartialTiming('source_csv.parser_readable')
+        }
+        /*parser.on('readable', (record: T) => {
+            parser.onRecord = parser.onRecord || onRecord
+            while (record = parser.read()) {
+                parser.onRecord(record)
             }
-        })
-        parser.on('finish', () => {
-            console.log('event:finish')
-        })
-        parser.on('close', () => {
-            console.log('event:close')
-        })
-        parser.on('end', () => {
-            console.log('event:end')
-        })
-        this.parser = parser
+        })*/
+        parser.on('data', onRecord)
+
         this.parser.on('error', function (err: Error) {
             console.error(err.message);
         });
-        this.parser.on('close', () => {
-            if (this.responseHeaders) {
-                this.responseHeaders.appendPartialTiming('source_csv.close')
-            } else {
-                console.trace('NO responseHeaders')
-            }
-        })
-
-        this.parser.on('end', () => {
-            if (this.responseHeaders) {
-                this.responseHeaders.appendPartialTiming('source_csv.end')
-            } else {
-                console.trace('NO responseHeaders')
-            }
-        })
-
+        if (responseHeaders) this.responseHeaders = responseHeaders
     }
     on(event: string, cb: { (...args: any[]): void; }): this {
         if (event === 'record') {
+            console.log('parser onRecord', cb)
             this.parser.onRecord = cb
         } else {
+            console.log('parser on:', event)
             this.parser.on(event, cb);
         }
         return this;
     }
 
-    async stream(req: Request): Promise<Response> {
-
-        const started_at = req.headers.get('started_at'),
-            startTime = req.headers.get('startTime')
-        this.responseHeaders = HeadersWithTimings.createFrom(this.responseHeaders || { startTime, started_at } as Record<string, string>)
-
-        let res = await fetch(req);
-        if (!res || !res.body) {
-            return Promise.reject(new Error('invalid response ' + res.statusText));
-        }
-
-
-        this.responseHeaders.set('content-type', 'application/json;charset=UTF-8')
-
-        res.body.pipeThrough(this)
-        return new Response(this.readable, {
-            headers: this.responseHeaders
-        })
-    }
-
-
-    async parse(res: Response): Promise<T[]> {
-        if (!res || !res.body) {
-            return Promise.resolve(this.parsedArray);
-        }
-        this.parser.on('data', (record: T) => {
-            this.parsedArray.push(record);
-        })
-        res.body.pipeThrough(this)
-        return new Promise((resolve, reject) => {
-            this.parser.on('end', (record: T) => {
-                resolve(this.parsedArray)
-            })
-
-
-        });
-
-    }
+    /* async stream(req: Request): Promise<Response> {
+         console.log({ responseHeaders: this.responseHeaders })
+         const started_at = req.headers.get('started_at'),
+             startTime = req.headers.get('startTime')
+         this.responseHeaders = HeadersWithTimings.createFrom(this.responseHeaders || { startTime, started_at } as Record<string, string>)
+ 
+         let res = await fetch(req);
+         if (!res || !res.body) {
+             return Promise.reject(new Error('invalid response ' + res.statusText));
+         }
+ 
+         this.responseHeaders.appendPartialTiming('source_csv.ttfb')
+ 
+         this.responseHeaders.set('content-type', 'application/json;charset=UTF-8')
+         this.parser.on('end', () => {
+             if (this.responseHeaders) {
+                 this.responseHeaders.appendPartialTiming('source_csv.complete')
+             } else {
+                 console.trace('NO responseHeaders')
+             }
+         })
+ 
+         res.body.pipeThrough(this)
+         return new Response(this.readable, {
+             headers: this.responseHeaders
+         })
+     }
+ 
+ 
+     async parse(res: Response): Promise<T[]> {
+         if (!res || !res.body) {
+             return Promise.resolve(this.parsedArray);
+         }
+ 
+         console.time('StreamingCSVParser:parse')
+         this.on('record', (record) => {
+             console.log({ rowCount: this.parsedArray.length })
+             this.parsedArray.push(record);
+         })
+         res.body.pipeTo(this.writable)
+         return new Promise((resolve, reject) => {
+             this.on('end', () => {
+                 console.timeEnd('StreamingCSVParser:parse')
+                 resolve(this.parsedArray)
+             })
+ 
+         });
+ 
+     }*/
 }

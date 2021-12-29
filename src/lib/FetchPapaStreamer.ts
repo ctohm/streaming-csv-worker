@@ -132,7 +132,6 @@ export class FetchPapaStreamer {
 		return this.parseChunk(chunkText);
 	}
 	async parseChunk(chunk: string): Promise<ParseResult<unknown>> {
-		//console.log({ chunkLength: chunk.length })
 		// First chunk pre-processing
 		if (this.isFirstChunk && isFunction(this._config.beforeFirstChunk)) {
 			var modifiedChunk = this._config.beforeFirstChunk(chunk);
@@ -144,8 +143,8 @@ export class FetchPapaStreamer {
 
 		// Rejoin the line we likely just split in two by chunking the file
 		var aggregate = this._partialLine + chunk;
-		this._partialLine = '';
 
+		this._partialLine = '';
 		let results = this._handle.parse(aggregate, this._baseIndex, !this._finished);
 
 		if (this._handle.paused() || this._handle.aborted()) {
@@ -159,6 +158,7 @@ export class FetchPapaStreamer {
 
 		if (!this._finished) {
 			this._partialLine = aggregate.substring(lastIndex - this._baseIndex);
+
 			this._baseIndex = lastIndex;
 		}
 
@@ -195,7 +195,6 @@ export class FetchPapaStreamer {
 		}
 
 		if (!finishedIncludingPreview && (!results || !results.meta.paused)) {
-			//console.log(!finishedIncludingPreview)
 			return this._readChunk();
 		}
 

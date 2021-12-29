@@ -5,10 +5,10 @@ export class HeadersWithTimings extends Headers {
     previousEndTime!: number
     constructor(init: HeadersInit) {
         super(init)
-        if (this.has('startTime')) this.startTime = Number(this.get('startTime'))
+        if (this.has('startTime')) this.startTime = Math.floor(Number(this.get('startTime')))
         if (this.has('started_at')) {
 
-            this.started_at = Number(this.get('started_at'))
+            this.started_at = Math.floor(Number(this.get('started_at')))
             this.previousEndTime = this.started_at
         }
         this.set('Timing-Allow-Origin', '*')
@@ -21,14 +21,16 @@ export class HeadersWithTimings extends Headers {
         return new HeadersWithTimings(init)
     }
 
-    appendPartialTiming(name: string): void {
+    appendPartialTiming(name: string): { [s: string]: string | number } {
         let currentTime = Date.now(),
-            duration = currentTime - this.previousEndTime,
+            duration = Math.floor(currentTime - this.previousEndTime),
             endTime = this.startTime + duration,
-            partialTiming: string = `${name};desc=${this.startTime};dur=${duration}`;
+            partialTiming: string = `${name};desc="endtime:${endTime}";dur=${duration}`;
         this.previousEndTime = currentTime
+        this.startTime = endTime
         console.info(partialTiming)
-
+        let previousPartialTiming = this.get('Server-Timing') || '';
         this.append('Server-Timing', partialTiming);
+        return { name, duration, endTime, startTime: endTime - duration }
     };
 }

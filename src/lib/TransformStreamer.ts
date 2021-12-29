@@ -6,6 +6,46 @@ import type { PapaConfig, ParseConfig, GuessableDelimiters, ParseResult, NODE_ST
 import { default as PapaDefault, ParserHandle, Parser } from 'papaparse'
 import { FetchPapaStreamer, createEmptyResult } from './FetchPapaStreamer';
 export { FetchPapaStreamer }
+class MyEventEmitter {
+	_events: Record<string, Function[]>
+	constructor() {
+		this._events = {};
+	}
+
+	on(name: string, listener: Function) {
+		if (!this._events[name]) {
+			this._events[name] = [];
+		}
+
+		this._events[name].push(listener);
+	}
+
+	removeListener(name: string, listenerToRemove: Function) {
+		if (!this._events[name]) {
+			return
+		}
+
+		const filterListeners = (listener) => listener !== listenerToRemove;
+
+		this._events[name] = this._events[name].filter(filterListeners);
+	}
+
+	emit(name: string, data?: any) {
+		//console.log({ emitting: name, handler: this._events[name] })
+		if (!this._events[name]) {
+			return
+		}
+
+		const fireCallbacks = (callback: Function) => {
+			callback(data);
+		};
+
+		this._events[name].forEach(fireCallbacks);
+	}
+	clearListeners(): void {
+		this._events = {}
+	}
+}
 /**
  * Modified FetchStreamer, in which fetch and WhatWg streams replace XMLHttpRequest and its progress event
  */
@@ -28,22 +68,24 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 
 	pause: any;
 	resume: any;
-
+	emitter: MyEventEmitter
 
 	constructor(config: Partial<PapaConfig> = {} as Partial<PapaConfig>) {
 		let separator = '',
 			finalChar = ''
 		const textencoder = new TextEncoder(),
 			textdecoder = new TextDecoder(),
+			emitter = new MyEventEmitter(),
 			transformContent = {
 				start(controller: TransformStreamDefaultController): void {
 					controller.enqueue('[')
+
 				},
 
 
 				transform: async (chunk: Uint8Array, controller: TransformStreamDefaultController): Promise<void> => {
 					chunk = await chunk
-
+					if (separator === '') emitter.emit('transform')
 					switch (typeof chunk) {
 						case 'object':
 							// just say the stream is done I guess
@@ -51,14 +93,16 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 
 							let chunkText = chunk ? textdecoder.decode(chunk) : textdecoder.decode(),
 								result = this.parseChunk(chunkText),
-								rows = result.data
-							rows.forEach(row => {
+								{ data = [] } = result
+
+
+
+							data.forEach(row => {
 								controller.enqueue(textencoder.encode(separator + JSON.stringify(row)))
 								separator = ',';
 
 							})
 							if (this._completed || this._halted || this._finished) {
-								console.warn('COMPLETEEE')
 								finalChar = ']'
 								controller.enqueue(finalChar)
 								controller.terminate()
@@ -70,8 +114,8 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 					}
 				},
 				flush(controller: TransformStreamDefaultController): void {
-					console.log('called flush')
 
+					emitter.emit('end')
 					if (finalChar === '') {
 						finalChar = ']'
 						controller.enqueue(finalChar)
@@ -80,6 +124,8 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 
 			}
 		super({ ...transformContent })
+		this.emitter = emitter
+
 
 		var dynamicTyping = config.dynamicTyping || false;
 		if (isFunction(dynamicTyping)) {
@@ -109,6 +155,15 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 		config.withCredentials = config.withCredentials || 'same-origin'
 		this.decoder = new TextDecoder();
 		this.replaceConfig({ chunkSize: Papa.RemoteChunkSize, ...config } as PapaConfig);
+	}
+	on(name: string, cb: Function): this {
+
+		this.emitter.on(name, cb)
+		return this
+	}
+	clearListeners(): this {
+		this.emitter.clearListeners();
+		return this
 	}
 	parseChunk(chunk: string): ParseResult<unknown> {
 		//console.log({ chunkLength: chunk.length })
@@ -175,14 +230,26 @@ export class TransformStreamer extends TransformStream<Uint8Array, Uint8Array> {
 
 		return results;
 	}
+	async transform(res: Response, responseHeaders?: HeadersInit) {
 
+		if (!res.ok || !res.body) {
+			throw new Error("Couldn't obtain readable body")
+		}
+
+		res.body.pipeThrough(this)
+
+		return new Response(
+			this.readable, {
+			headers: responseHeaders || { 'content-type': 'application/json' }
+		});
+	}
 
 	async stream(_input: string | Request | Response): Promise<Response> {
 		let res: Response
 		if (_input instanceof Response) {
 			res = _input.clone()
 		} else if (_input instanceof Request) {
-			console.log('input is a request')
+			//console.log('input is a request')
 			res = await fetch(_input)
 		} else {
 

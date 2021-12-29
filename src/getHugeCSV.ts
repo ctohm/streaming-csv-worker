@@ -6,6 +6,15 @@ export function getHugeCSVRequest(req: Request): Request {
     return newReq;
 
 }
+export function getSmallCSVRequest(req: Request): Request {
+
+    let newReq = new Request("https://www.ishares.com/us/products/239738/ishares-global-clean-energy-etf/1467271812596.ajax?fileType=csv&dataType=fund", req);
+    newReq.headers.set('cache-control', 'no-cache');
+    newReq.headers.set('started_at', String(Date.now()));
+    return newReq;
+
+}
+
 export function getMediumCSVRequest(req: Request): Request {
 
     let newReq = new Request("https://www.ishares.com/us/products/264615/ishares-core-total-usd-bond-market-etf/1467271812596.ajax?fileType=csv&fileName=IUSB_holdings&dataType=fund", req);
@@ -15,14 +24,7 @@ export function getMediumCSVRequest(req: Request): Request {
 
 }
 
-export function getSmallCSVRequest(req: Request): Request {
 
-    let newReq = new Request("https://www.ishares.com/us/products/239738/ishares-global-clean-energy-etf/1467271812596.ajax?fileType=csv&dataType=fund", req);
-    newReq.headers.set('cache-control', 'no-cache');
-    newReq.headers.set('started_at', String(Date.now()));
-    return newReq;
-
-}
 
 export function getCSVPassThrough(request: Request): Promise<Response> {
 

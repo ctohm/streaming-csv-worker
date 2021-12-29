@@ -26,44 +26,45 @@ const buildOptions = ({ outdir = 'dist', format = 'cjs', outExtension, entryPoin
         target: 'es2020'
     }
 }
-let optionsEsm = buildOptions(
+let optionsStatic = buildOptions(
     {
-        format: 'esm',
-        outdir: 'dist',
-        outExtension: { '.js': '.mjs' },
-        entryPoints: ['src/worker.ts']
+        format: 'iife',
+        outdir: 'docs',
+        sourcemap: false,
+        entryPoints: ['src/xhr.ts']
     }),
-    optionsStatic = buildOptions(
+    optionsLibEsm = buildOptions(
         {
-            format: 'iife',
-            outdir: 'docs',
-            sourcemap:false,
-            entryPoints: ['src/xhr.ts']
+            format: 'esm',
+            outdir: 'dist',
+            sourcemap: false,
+            outExtension: { '.js': '.mjs' },
+            entryPoints: ['src/lib/index.ts']
+        }),
+    optionsLibCjs = buildOptions(
+        {
+            format: 'cjs',
+            outdir: 'dist',
+            sourcemap: false,
+            outExtension: { '.js': '.cjs' },
+            entryPoints: ['src/lib/index.ts']
+        }
+    ),
+    optionsWorker=buildOptions(
+        {
+            format: 'esm',
+            outdir: 'dist',
+            outExtension: { '.js': '.mjs' },
+            entryPoints: ['src/worker.ts']
         })
 
 
 esbuild
-    .build(buildOptions(
-        {
-            format: 'cjs',
-            outdir: 'dist',
-            outExtension: { '.js': '.cjs' },
-            entryPoints: ['lib/index.ts']
-        }))
+    .build(optionsWorker)
 
-    .then(result => esbuild.build(buildOptions(
-        {
-            format: 'esm',
-            outExtension: { '.js': '.mjs' },
-            entryPoints: ['lib/index.ts']
-        })))
-    .then(result => esbuild.build(buildOptions(
-        {
-            format: 'esm',
-            outExtension: { '.js': '.mjs' },
-            entryPoints: ['src/worker.ts']
-        })))
     .then(result => esbuild.build(optionsStatic))
+    .then(result => esbuild.build(optionsLibEsm))
+    .then(result => esbuild.build(optionsLibCjs))
 
     .then(result => {
         return console.log({ ...buildOptions, mode, resultkeys: Object.keys(result) })

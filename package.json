@@ -20,8 +20,7 @@
     "deploy": "rm -rf dist/* &&  yarn transpile && yarn build &&    yarn publish",
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
     "build:dev": "NODE_ENV=development node esbuild.mjs",
-    "build:worker": "esbuild   --format=esm src/worker.ts --outfile=dist/worker.mjs",
-    "miniflare": "NODE_ENV=development miniflare dist/worker.mjs -d -w"
+     "miniflare": "NODE_ENV=development miniflare dist/worker.mjs -d -w  -o DurableWk=DurableWk"
   },
   "author": {
     "email": "ffigueroa@ctohm.com",
@@ -34,7 +33,11 @@
   "license": "UNLICENSED",
   "version": "1.0.3",
   "dependencies": {
-    "streamsaver": "^2.0.5"
+    "itty-durable": "^0.4.0",
+    "itty-router": "^2.4.8",
+    "itty-router-extras": "^0.4.2",
+    "streamsaver": "^2.0.5",
+    "vitepress": "^0.20.10"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^3.3.0",
