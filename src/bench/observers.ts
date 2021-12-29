@@ -20,13 +20,20 @@ export function initObservers(entries: unknown[]) {
     })
     const ro = new PerformanceObserver((list) => {
         list.getEntriesByType('resource').forEach((entry) => {
-            let { startTime, duration, name, entryType, responseStart, responseEnd } = entry as PerformanceResourceTiming
+            let { startTime, duration, name, entryType, responseStart, responseEnd, serverTiming } = entry as PerformanceResourceTiming
             if (name.includes('mitm') || name.includes('favicon')) return
             startTime = Math.floor(startTime)
             duration = Math.floor(duration)
             responseEnd = Math.floor(responseEnd)
             responseStart = Math.floor(responseStart)
             if (/^https?:\/\//.test(name)) name = String(name.split('/').pop())
+            serverTiming.forEach((entry) => {
+                let { name, duration, description } = entry,
+                    endTime = Number(description.replace('endtime:', '')),
+                    startTime = endTime - duration
+
+                console.log({ name, duration, startTime, entryType: 'server', endTime })
+            })
             entries = entries.concat([
                 {
                     name: 'download:request_sent',
@@ -64,7 +71,7 @@ export function initObservers(entries: unknown[]) {
         const entriesObj = entries.sort((a, b) => {
             return a.endTime - b.endTime
         }).reduce((accum, entry) => {
-            let { name, endTime, startTime, duration, entryType } = entry;
+            let { name, endTime, startTime, duration, entryType } = entry as TbriefEntry;
             accum[name] = { endTime, startTime, duration, entryType };
             return accum;
         }, {} as { [s: string]: Omit<TbriefEntry, 'name'> })
