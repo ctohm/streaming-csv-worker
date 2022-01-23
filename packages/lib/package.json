@@ -1,0 +1,41 @@
+{
+  "name": "@ctohm/streaming-csv-adapters",
+  "version": "1.1.0",
+  "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
+  "module": "dist/index.mjs",
+  "main": "dist/index.cjs",
+  "author": {
+    "email": "amenadiel@gmail.com",
+    "name": "Felipe Figueroa"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:ctohm/streaming-csv-worker.git",
+    "directory": "packages/lib"
+  },
+  "types": "dist/index.d.ts",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "types": "tsc --project .",
+    "build:module": "esbuild src/index.ts --bundle --outdir=dist --format=esm --out-extension:.js=.mjs",
+    "build:cjs": "esbuild src/index.ts --bundle --outdir=dist --format=cjs --out-extension:.js=.cjs",
+    "build": "yarn build:module && yarn build:cjs"
+  },
+  "dependencies": {
+    "csv-parse": "^4.16.0",
+    "papaparse": "^5.3.1",
+    "stream-transform": "^3.0.4"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.10",
+    "@types/papaparse": "^5.2.6",
+    "esbuild": "^0.12.17",
+    "worktop": "0.8.0-next.5"
+  }
+}
