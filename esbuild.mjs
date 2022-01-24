@@ -26,47 +26,26 @@ const buildOptions = ({ outdir = 'dist', format = 'cjs', outExtension, entryPoin
         target: 'es2020'
     }
 }
-let optionsStatic = buildOptions(
+let  optionsWorkerEsm=buildOptions(
     {
-        format: 'iife',
-        outdir: 'docs',
-        sourcemap: false,
-        entryPoints: ['src/bench3.ts']
-    }),
-    optionsLibEsm = buildOptions(
-        {
-            format: 'esm',
-            outdir: 'dist',
-            sourcemap: false,
-            outExtension: { '.js': '.mjs' },
-            entryPoints: ['src/lib/index.ts']
-        }),
-    optionsLibCjs = buildOptions(
+        format: 'esm',
+        outdir: 'packages/worker/dist',
+        outExtension: { '.js': '.mjs' },
+        entryPoints: ['packages/worker/src/worker.ts']
+    }) ,
+    optionsWorkerCjs=buildOptions(
         {
             format: 'cjs',
-            outdir: 'dist',
-            sourcemap: false,
+            outdir: 'packages/worker/dist',
             outExtension: { '.js': '.cjs' },
-            entryPoints: ['src/lib/index.ts']
-        }
-    ),
-    optionsWorker=buildOptions(
-        {
-            format: 'esm',
-            outdir: 'dist',
-            outExtension: { '.js': '.mjs' },
-            entryPoints: ['src/worker.ts']
-        })
-
+            entryPoints: ['packages/worker/src/worker.ts']
+        }) 
 
 esbuild
-    .build(optionsWorker)
+    .build(optionsWorkerEsm)
+    .then(result => esbuild.build(    optionsWorkerCjs))
 
-    .then(result => esbuild.build(optionsStatic))
-    .then(result => esbuild.build(optionsLibEsm))
-    .then(result => esbuild.build(optionsLibCjs))
-
-    .then(result => {
+     .then(result => {
         return console.log({ ...buildOptions, mode, resultkeys: Object.keys(result) })
 
     })

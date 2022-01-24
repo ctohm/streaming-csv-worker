@@ -1,11 +1,14 @@
 /target
 /dist
+/packages/worker/dist
+/packages/lib/dist
+
 **/*.rs.bk
 Cargo.lock
 bin/
 pkg/
 wasm-pack.log
-worker/
+./worker/
 node_modules/
 .cargo-ok
 transpiled/

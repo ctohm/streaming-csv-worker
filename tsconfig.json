@@ -4,8 +4,7 @@
     "target": "ES2020",
     "module": "ES2020",
     "lib": [
-      "ES2020",
-      "WebWorker"
+      "ES2020"
     ],
     "isolatedModules": true,
     "resolveJsonModule": true,
@@ -16,9 +15,9 @@
      "esModuleInterop": true,
     "declarationMap": true,
     "types": [
-      "@cloudflare/workers-types","chrome"
+      "@cloudflare/workers-types"
     ],
-    "rootDirs": ["./src","./test"],
+    "rootDirs": ["packages","./src"],
     "noImplicitAny": true,
     "noImplicitThis": true,
     "declaration": true,
@@ -28,14 +27,14 @@
     "importsNotUsedAsValues": "error"
   },
   "include": [
-    "./src/*.d.ts",
-    "./src/*.ts",
+    "packages/*.d.ts",
+    "packages/*.ts",
     "./test/*.d.ts",
     "./test/*.ts",
-    "./src/**/*.d.ts",
-    "./src/**/*.ts",
-    "./functions/*.ts",
-    "./functions/**/*.ts",
+    "packages/**/*.d.ts",
+    "packages/**/*.ts",
+    ".src/*.ts",
+    ".src/*.d.ts",
     "./node_modules/@cloudflare/workers-types/index.d.ts"
   ],
   "exclude": [

@@ -1,26 +1,29 @@
 {
-  "name": "@ctohm/streaming-csv-worker",
+  "name": "@ctohm/streaming-csv-monorepo",
   "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
-  "module": "dist/index.mjs",
-  "main": "dist/index.cjs",
+  "module": "packages/worker/dist/index.mjs",
+  "main": "packages/worker/dist/index.cjs",
   "repository": {
     "type": "git",
     "url": "git@github.com:ctohm/streaming-csv-worker.git"
   },
   "types": "dist/index.d.ts",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com/"
-  },
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "docs:dev": "vitepress dev docs",
     "docs:build": "vitepress build docs",
     "docs:serve": "vitepress serve docs",
     "transpile": "tsc --project .   ",
-    "build": "node esbuild.mjs     --outdir=dist",
+    "build": "node esbuild.mjs     --outdir=packages/worker/dist",
+    "xbuild:lib": "cd src/lib && yarn build && cd -",
     "deploy": "rm -rf dist/* &&  yarn transpile && yarn build &&    yarn publish",
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
-    "build:dev": "NODE_ENV=development node esbuild.mjs",
-    "miniflare": "NODE_ENV=development miniflare dist/worker.mjs -d -w  -o DurableWk=DurableWk"
+    "xbuild:dev": "NODE_ENV=development node esbuild.mjs",
+    "miniflare": "NODE_ENV=development miniflare packages/worker/dist/worker.mjs -d -w  -o DurableWk=DurableWk -c packages/worker/wrangler.toml --package  packages/worker/packages.json --build-base-path packages/worker   --build-watch-path packages/worker/src   --build-watch-path packages/lib/src"
+    
   },
   "author": {
     "email": "ffigueroa@ctohm.com",
@@ -48,12 +51,11 @@
     "ava": "^3.15.0",
     "csv-parse": "^4.16.0",
     "esbuild": "^0.12.17",
-    "miniflare": "^1.3",
+    "miniflare": "^2",
     "papaparse": "^5.3.1",
+    "stream-transform": "^3.0.4",
     "worktop": "0.8.0-next.5"
   },
   "peerDependencies": {},
-  "optionalDependencies": {
-    "wrangler": "^0.0.6"
-  }
+  "optionalDependencies": {}
 }
