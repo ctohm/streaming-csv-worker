@@ -1,7 +1,0 @@
-/*
-  Access-Control-Allow-Origin: *
-  Access-Control-Allow-Methods: GET, HEAD, OPTIONS, POST
-  X-Content-Type-Options: nosniff
-  Access-Control-Expose-Headers: *
-  Access-Control-Allow-Headers: Content-Type,Range,Content-Range
-  Cache-Control: no-cache, no-store, s-maxage=1

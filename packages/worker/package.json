@@ -1,0 +1,37 @@
+{
+  "name": "@ctohm/streaming-csv-worker",
+  "description": "Example worker showing usage of streaming csv adapters",
+  "module": "dist/index.mjs",
+  "main": "dist/index.cjs",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:ctohm/streaming-csv-worker.git",
+    "directory": "packages/worker"
+  },
+  "types": "dist/index.d.ts",
+  "scripts": {
+   
+    "transpile": "tsc --project .   ",
+    "build": "node esbuild.mjs     --outdir=dist",
+   
+    "deploy": "rm -rf dist/* &&  yarn transpile && wrangler publish",
+    "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
+    "build:dev": "NODE_ENV=development node esbuild.mjs",
+    "miniflare": "NODE_ENV=development miniflare dist/worker.mjs -d -w  -o DurableWk=DurableWk"
+  },
+  "license": "UNLICENSED",
+  "version": "1.0.3",
+  "dependencies": {
+    "@ctohm/streaming-csv-adapters": "^1.1.0",
+    "itty-durable": "^0.4.0",
+    "itty-router": "^2.4.8",
+    "itty-router-extras": "^0.4.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^3.3.0",
+    "esbuild": "^0.12.17",
+    "miniflare": "^2"
+  },
+  "peerDependencies": {}
+ 
+}

@@ -1,0 +1,10 @@
+/*https://github.com/vuejs/vitepress/blob/master/src/client/theme-default/styles/vars.css*/
+:root {
+    --c-brand: #5099b7;
+    --c-brand-light: #99b8e7;
+    --c-text-light:#666;
+  }
+  a {
+    font-weight:600 ;
+    color:var(--c-brand)
+  }

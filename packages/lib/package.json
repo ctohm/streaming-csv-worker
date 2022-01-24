@@ -2,7 +2,7 @@
   "name": "@ctohm/streaming-csv-adapters",
   "version": "1.1.0",
   "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
-  "module": "dist/index.mjs",
+  "module": "src/index.ts",
   "main": "dist/index.cjs",
   "author": {
     "email": "amenadiel@gmail.com",
