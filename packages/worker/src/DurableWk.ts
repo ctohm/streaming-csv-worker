@@ -183,6 +183,8 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
         if (!originRes.body || !originRes.ok) {
             throw new Error(originRes.statusText)
         }
+        console.info(Object.fromEntries(originRes.headers))
+
         let endTime = wsTimings.now() + websocketTimings.baseLine,
             duration = endTime - startTime,
 

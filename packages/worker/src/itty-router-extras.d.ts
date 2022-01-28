@@ -17,9 +17,10 @@ declare module "itty-router-extras" {
     export type EnvWithDurableObject = {
         DurableWk: DurableObjectNamespace
         defaultState: undefined
+        GCLOUD_FUNCTION_HOST: string
     }
     type TRequestWithParams = Request & {
-
+        GCLOUD_FUNCTION_HOST: string;
         DurableWk: DurableStubGetter
         reqHeaders: {
             [s: string]: string;

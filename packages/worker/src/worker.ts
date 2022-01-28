@@ -78,6 +78,28 @@ router
         return getCSVPassThrough(computeSourceRequest(req))
 
     })
+    .get('/*/gcloud*', (req: TRequestWithParams, env: EnvWithDurableObject) => {
+
+
+        let newUrl = new URL(req.url)
+        newUrl.host = env.GCLOUD_FUNCTION_HOST
+        newUrl.pathname = 'csv-transform'
+
+        let newReq = new Request(newUrl.toString(), req);
+        newReq.headers.set('cache-control', 'no-cache');
+        newReq.headers.set('timeOrigin', String(Date.now()));
+        return fetch(newReq, req.headers as RequestInit).then(res => {
+            res = new Response(res.body, res);
+            res.headers.set('Access-Control-Allow-Origin', '*');
+            res.headers.set('cache-control', 'no-cache, no-store, s-maxage=0');
+
+            return res
+        });
+
+
+
+
+    })
     .get('/*/sessions', (req: TRequestWithParams) => {
         return getEnhancedIttyDurable<'listSessions'>(req.DurableWk, 'DurableWk').listSessions()
 
