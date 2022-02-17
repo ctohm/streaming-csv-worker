@@ -9,6 +9,7 @@ actionLink: the_edge_alternative
 
 ---
 
-Conversion to JSON from a remote CSV or DSV source whose size is unknown (and potentially huge) must implement some way of reading the source contents sequentially or in chunks. However, every environment specific optimization will at some point copy the source anyway, either to the local filesystem beforehand, or implicitly storing it in the responseText of an XHR call. 
+**The Problem** (or the challenge, if you want) is converting a *remote and potentially huge* CSV/DSV to JSON, efficiently, unobtrusively, and with scaling in mind. Eventually it boils down to implementing sequential reading and parsing, without storing it in memory, and streaming the response as its being transformed, without buffering. In the real world, as long as it can handle huge sources, most impromptu implementations are willing to compromise in speed and storage efficiency, and just get the job done and call it a day.
 
-By leveraging Cloudflare Workers unique features, this library is able to perform **zero-copy, nearly-instant conversion** over sources of **unlimited size**.
+
+This library is an adapter that enables pumping a web stream to either [PapaParse](https://www.papaparse.com/docs#remote-files) or [CSV Parse](https://csv.js.org/parse/distributions/browser_esm/) parsing engines and, by leveraging Cloudflare Workers unique features, it's able  to perform **zero-copy, nearly-instant conversion**, achieving the shortest [Time to First Byte](https://developer.mozilla.org/en-US/docs/Glossary/time_to_first_byte) possible, over sources of **potentially unlimited size**, without depending on CORS or range requests availability.

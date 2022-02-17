@@ -38,9 +38,13 @@ function getMediumCSVRequest(req?: Request): Request {
 export function getCSVPassThrough(request: Request): Promise<Response> {
 
 
-    let timingHeaders = new HeadersWithTimings(request.headers)
+    let timingHeaders = new HeadersWithTimings({
+        browserTimeOrigin: request.headers.get('timeOrigin'),
+        startTime: request.headers.get('starttime'),
+        timestamp: request.headers.get('timestamp')
+    })
     return fetch(request).then((res: Response) => {
-        console.info(Object.fromEntries(res.headers))
+
         res = new Response(res.body, res);
         timingHeaders.appendPartialTiming('source_csv.response_start')
         res.headers.set('Access-Control-Allow-Origin', '*');

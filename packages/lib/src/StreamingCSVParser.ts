@@ -35,17 +35,14 @@ class ParserPlus<T extends TRowType> extends parse.Parser {
 }
 
 export class StreamingCSVParser<T extends TRowType = TRowType> extends TransformStream<Uint8Array, Uint8Array> {
-    parsedArray: T[]
     parser: ParserPlus<T>
+    writable!: WritableStream<Uint8Array>;
+    readable!: ReadableStream<Uint8Array>;
     responseHeaders?: Headers
-    constructor(options: TParserExtendedOptions, extraHeaders?: Headers | HeadersInit) {
+    constructor(options: TParserExtendedOptions) {
         let separator = '',
             finalChar = '',
-            streamIsClosed = false,
-            responseHeaders: HeadersInit | null = null
-        if (extraHeaders) {
-            responseHeaders = new Headers(extraHeaders)
-        }
+            streamIsClosed = false
 
         const parser = new ParserPlus<T>(options)
         const textencoder = new TextEncoder(),
@@ -55,19 +52,21 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
 
                 start(controller: TransformStreamDefaultController): void {
                     parser.controller = controller
+                    this.parser = parser
+                    this.tacha = 'pendeja'
                     controller.enqueue(textencoder.encode('['))
 
                 },
 
 
-                transform: async (chunk: Uint8Array, controller: TransformStreamDefaultController): Promise<void> => {
+                async transform(chunk: Uint8Array, controller: TransformStreamDefaultController): Promise<void> {
                     chunk = await chunk
 
                     switch (typeof chunk) {
                         case 'object':
                             // just say the stream is done I guess
                             if (chunk === null) controller.terminate()
-                            parser.promisedWrite(textdecoder.decode(chunk))
+                            parser.write(textdecoder.decode(chunk))
 
                             break
                         default:
@@ -81,13 +80,15 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
                     parser.end();
                     if (finalChar === '') {
                         finalChar = ']'
+                        
                         controller.enqueue(textencoder.encode(finalChar))
                     }
+                    if(options.complete) options.complete([])
                 }, // required.
 
             }
         super({ ...transformContent })
-        this.parsedArray = [] as T[]
+        //this.parsedArray = [] as T[]
 
         this.parser = parser
         let onRecord = (record: T) => {
@@ -102,14 +103,14 @@ export class StreamingCSVParser<T extends TRowType = TRowType> extends Transform
             console.error(err.message);
         });
     }
+    parseChunk(chunk: string): void {
+
+    }
     on(event: string, cb: { (...args: any[]): void; }): this {
-        if (event === 'record') {
-            console.log('parser onRecord', cb)
-            this.parser.onRecord = cb
-        } else {
+       
             console.log('parser on:', event)
             this.parser.on(event, cb);
-        }
+       
         return this;
     }
 

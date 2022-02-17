@@ -10,8 +10,8 @@ declare module "itty-router-extras" {
     }
 
 
-    type DurableStubGetter = {
-        get(id: string): IttyDurable;
+    type DurableStubGetter<TSessionType> = {
+        get(id: string): IttyDurable<TSessionType>;
     };
 
     export type EnvWithDurableObject = {
@@ -19,9 +19,9 @@ declare module "itty-router-extras" {
         defaultState: undefined
         GCLOUD_FUNCTION_HOST: string
     }
-    type TRequestWithParams = Request & {
+    type TRequestWithParams<TSessionType> = Request & {
         GCLOUD_FUNCTION_HOST: string;
-        DurableWk: DurableStubGetter
+        DurableWk: DurableStubGetter<TSessionType>
         reqHeaders: {
             [s: string]: string;
         },

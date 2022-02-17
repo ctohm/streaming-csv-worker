@@ -10,10 +10,8 @@
   },
   "types": "dist/index.d.ts",
   "scripts": {
-   
     "transpile": "tsc --project .   ",
     "build": "node esbuild.mjs     --outdir=dist",
-   
     "deploy": "rm -rf dist/* &&  yarn transpile && wrangler publish",
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
     "build:dev": "NODE_ENV=development node esbuild.mjs",
@@ -33,5 +31,4 @@
     "miniflare": "^2"
   },
   "peerDependencies": {}
- 
 }

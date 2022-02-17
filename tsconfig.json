@@ -17,7 +17,7 @@
     "types": [
       "@cloudflare/workers-types"
     ],
-    "rootDirs": ["packages","./src"],
+    "rootDirs": ["packages"],
     "noImplicitAny": true,
     "noImplicitThis": true,
     "declaration": true,
@@ -33,8 +33,7 @@
     "./test/*.ts",
     "packages/**/*.d.ts",
     "packages/**/*.ts",
-    ".src/*.ts",
-    ".src/*.d.ts",
+ 
     "./node_modules/@cloudflare/workers-types/index.d.ts"
   ],
   "exclude": [

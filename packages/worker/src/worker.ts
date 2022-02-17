@@ -23,33 +23,33 @@ import { ThrowableRouter, missing, withParams, EnvWithDurableObject, DurableStub
 import { IttyDurable, withDurables } from 'itty-durable'
 
 // export the durable class, per spec
-import { DurableWk } from './DurableWk';
+import { DurableWk, } from './DurableWk';
 import { Router } from 'itty-router';
 
 type TBadgerMethod<TMethodName extends string> = DurableWk[TMethodName] extends Function ? DurableWk[TMethodName] : { (args: unknown): Promise<Response> }
 
 type ittyWithMethod<TMethodName extends string> = { [K in TMethodName]: TBadgerMethod<TMethodName> }
-function getEnhancedIttyDurable<TMethodName extends string>(stubGetter: DurableStubGetter, nameId: string): IttyDurable & ittyWithMethod<TMethodName> {
-    return stubGetter.get(nameId) as unknown as IttyDurable & ittyWithMethod<TMethodName>
+function getEnhancedIttyDurable<TMethodName extends string>(stubGetter: DurableStubGetter<WebSocketWithTimings>, nameId: string): IttyDurable<WebSocketWithTimings> & ittyWithMethod<TMethodName> {
+    return stubGetter.get(nameId) as unknown as IttyDurable<WebSocketWithTimings> & ittyWithMethod<TMethodName>
 }
-
+import type { WebSocketWithTimings } from './DurableWk'
 const router = Router()
 
 router
     // add upstream middleware, allowing Durable access off the request
     .all('*', withDurables())
 
-    .all('*', withParams, (request: TRequestWithParams) => {
+    .all('*', withParams, (request: TRequestWithParams<WebSocketWithTimings>) => {
         request.params = request.params || {}
         request.params.startTime = request.headers.get('startTime') || '0'
         request.params.timeOrigin = request.headers.get('timeOrigin') || String(Date.now())
-        let sourceCSVReq: CFRequest = computeSourceRequest(request);
-        console.log({ sourceCSVReq: sourceCSVReq.url })
+        let sourceCSVReq: CFRequest = computeSourceRequest(request),
+            ip = request.headers.get("CF-Connecting-IP") || '127.0.0.' + Math.floor(Math.random() * 256);
+        console.log({ sourceCSVReq: sourceCSVReq.url, ip })
         //@ts-ignore
         request.reqHeaders = Object.fromEntries(sourceCSVReq.headers.entries())
         request.params.sourceUrl = sourceCSVReq.url
-        request.params.ip = request.headers.get("CF-Connecting-IP") || '127.0.0.' + Math.floor(Math.random() * 256);
-
+        request.params.ip = ip
     })
     .options('*', () => {
         return new Response('', {
@@ -61,60 +61,44 @@ router
         })
     })
     .get('favicon*', () => getFavicon())
-    .all('/*/ws*', (request: TRequestWithParams, env: EnvWithDurableObject) => {
+    .all('/*/ws*', (request: TRequestWithParams<WebSocketWithTimings>, env: EnvWithDurableObject) => {
         const upgradeHeader = request.headers.get("Upgrade")
         console.log({ upgradeHeader })
         if (upgradeHeader !== "websocket") {
             return new Response("Expected websocket", { status: 400 })
         }
-        return env.DurableWk.get(env.DurableWk.idFromName('DurableWk')).fetch(`https://streaming-csv-worker/call/getWebsocketServer`, request)
+        return env.DurableWk.get(env.DurableWk.idFromName('DurableWk_v2')).fetch(`https://streaming-csv-worker/call/getWebsocketServer`, request)
     })
-    .get('/*/transform*', (request: TRequestWithParams) => {
-        let { reqHeaders, ip, sourceUrl } = computeSourceRequest(request);
-        return getEnhancedIttyDurable<'getWithTransformStreamer'>(request.DurableWk, 'DurableWk').getWithTransformStreamer({ reqHeaders, ip, sourceUrl })
+    .get('/*/transform*', (request: TRequestWithParams<WebSocketWithTimings>) => {
+        let { reqHeaders, ip, sourceUrl } = computeSourceRequest(request),
+            startTime = request.headers.get('startTime') || '0',
+            timeOrigin = request.headers.get('timeOrigin') || String(Date.now())
+        console.time('getWithTransformStreamer')
+        return getEnhancedIttyDurable<'getWithTransformStreamer'>(request.DurableWk, 'DurableWk_v2')
+            .getWithTransformStreamer({ reqHeaders, ip, sourceUrl })
+            .then(res => {
+                console.timeEnd('getWithTransformStreamer')
+                console.log({ startTime, timeOrigin, timeStamp: Date.now() })
+                return res
+            })
     })
-    .get('/*/xhr*', (req: TRequestWithParams) => {
+    .get('/*/xhr*', (req: TRequestWithParams<WebSocketWithTimings>) => {
 
         return getCSVPassThrough(computeSourceRequest(req))
 
     })
-    .get('/*/gcloud*', (req: TRequestWithParams, env: EnvWithDurableObject) => {
 
-
-        let newUrl = new URL(req.url)
-        newUrl.host = env.GCLOUD_FUNCTION_HOST
-        newUrl.pathname = 'csv-transform'
-
-        let newReq = new Request(newUrl.toString(), req);
-        newReq.headers.set('cache-control', 'no-cache');
-        newReq.headers.set('timeOrigin', String(Date.now()));
-        return fetch(newReq, req.headers as RequestInit).then(res => {
-            res = new Response(res.body, res);
-            res.headers.set('Access-Control-Allow-Origin', '*');
-            res.headers.set('cache-control', 'no-cache, no-store, s-maxage=0');
-
-            return res
-        });
-
-
-
-
-    })
-    .get('/*/sessions', (req: TRequestWithParams) => {
-        return getEnhancedIttyDurable<'listSessions'>(req.DurableWk, 'DurableWk').listSessions()
-
-    })
-    .get('/*/*.csv', (req: TRequestWithParams) => {
+    .get('/*/*.csv', (req: TRequestWithParams<WebSocketWithTimings>) => {
 
         return getCSVPassThrough(computeSourceRequest(req))
 
     })
-    .get('/*/raw*', (req: TRequestWithParams) => {
+    .get('/*/raw*', (req: TRequestWithParams<WebSocketWithTimings>) => {
 
         return getCSVPassThrough(computeSourceRequest(req))
 
     })
-    .get('/*/csvparse*', (request: TRequestWithParams) => {
+    .get('/*/csvparse*', (request: TRequestWithParams<WebSocketWithTimings>) => {
 
         let sourceCSVReq: Request = computeSourceRequest(request);
         let ip = request.headers.get("CF-Connecting-IP") || '127.0.0.1';
@@ -124,15 +108,15 @@ router
             startTime = request.headers.get('startTime') || '0',
             timeOrigin = request.headers.get('timeOrigin') || String(Date.now()),
             sourceUrl = sourceCSVReq.url
-
-        return getEnhancedIttyDurable<'getWithStreamingCSVParser'>(request.DurableWk, 'DurableWk').getWithStreamingCSVParser({
+        console.time('getWithStreamingCSVParser')
+        return getEnhancedIttyDurable<'getWithStreamingCSVParser'>(request.DurableWk, 'DurableWk_v2').getWithStreamingCSVParser({
             startTime,
             timeOrigin,
             sourceUrl,
             reqHeaders, ip
-        })
+        }) 
     })
-    .get('/*/fetch*', (request: TRequestWithParams) => {
+    .get('/*/fetch*', (request: TRequestWithParams<WebSocketWithTimings>) => {
         console.info(request.params,)
         let sourceCSVReq: Request = computeSourceRequest(request);
         let ip = request.headers.get("CF-Connecting-IP") || '127.0.0.1';
@@ -142,18 +126,22 @@ router
             startTime = request.headers.get('startTime') || '0',
             timeOrigin = request.headers.get('timeOrigin') || String(Date.now()),
             sourceUrl = sourceCSVReq.url
-
-        return getEnhancedIttyDurable<'getWithFetchStreamer'>(request.DurableWk, 'DurableWk').getWithFetchStreamer({
+        console.time('getWithFetchStreamer')
+        return getEnhancedIttyDurable<'getWithFetchStreamer'>(request.DurableWk, 'DurableWk_v2').getWithFetchStreamer({
             startTime,
             timeOrigin,
             sourceUrl,
             reqHeaders,
             ip
+        }).then(res => {
+            console.timeEnd('getWithFetchStreamer')
+            console.log({ startTime, timeOrigin, timeStamp: Date.now() })
+            return res
         })
     })
 
     // 404 for everything else
-    .all('*', (request: TRequestWithParams & { cf: RequestInitCfProperties, headers: Headers }) => json({ url: request.url, method: request.method }, {
+    .all('*', (request: TRequestWithParams<WebSocketWithTimings> & { cf: RequestInitCfProperties, headers: Headers }) => json({ url: request.url, method: request.method }, {
         headers: {
             'Content-Type': 'application/json',
             "Access-Control-Allow-Origin": "*",
@@ -165,7 +153,7 @@ router
 export { DurableWk }
 export default {
     fetch: (request: CFRequest, env: PagesFuncParams['env'], ctx: { waitUntil: PagesFuncParams['waitUntil'] }): Response | Promise<Response> => {
-        console.log({ env })
+
         return router.handle(request, env)
             .catch((err: Error) => {
                 return json({ message: err.message, stack: String(err.stack).split('\n') })

@@ -7,6 +7,7 @@ export type TWsTimingSnapshot = {
     browserTimeOrigin: number,
     previousEndTime: number,
     delta: number,
+    now: number
 }
 /**
  * Utility class to add timing utilities to Headers.
@@ -21,22 +22,24 @@ export class HeadersWithTimings extends Headers {
     constructor(init: HeadersInit) {
         super(init)
         if (this.has('startTime')) this.baseLine = Math.floor(Number(this.get('startTime')))
-        if (this.has('timestamp')) {
-            this.browserTimestamp = Math.floor(Number(this.get('timestamp')))
+        if (this.has('browserTimestamp')) {
+            this.browserTimestamp = Math.floor(Number(this.get('browserTimestamp')))
             this.delta = Date.now() - this.browserTimestamp
         }
-        if (this.has('timeOrigin')) {
+        if (this.has('browserTimeOrigin')) {
 
-            this.browserTimeOrigin = Math.floor(Number(this.get('timeOrigin')))
+            this.browserTimeOrigin = Math.floor(Number(this.get('browserTimeOrigin')))
             this.previousEndTime = this.browserTimeOrigin + this.baseLine
         }
         console.log({
             timingHeaders: {
-                timeOrigin: this.timeOrigin, startTime: this.baseLine, previousEndTime: this.previousEndTime
+                timeOrigin: this.timeOrigin,
+                browserTimeOrigin: this.browserTimeOrigin,
+                startTime: this.baseLine,
+                previousEndTime: this.previousEndTime
             }
         })
         this.set('Timing-Allow-Origin', '*')
-        this.set('Trailer', 'Server-Timing')
     }
     static createFrom(init: HeadersInit) {
         if (init instanceof HeadersWithTimings) {
@@ -51,12 +54,14 @@ export class HeadersWithTimings extends Headers {
         return JSON.stringify(this.toJSON())
     }
     toJSON(): TWsTimingSnapshot {
+        let currentTime = Date.now()
         return {
-            currentTime: Date.now(),
+            currentTime,
+            now: currentTime - this.timeOrigin,
             baseLine: this.baseLine,
             timeOrigin: this.timeOrigin,
-            browserTimestamp: this.browserTimestamp,
             browserTimeOrigin: this.browserTimeOrigin,
+            browserTimestamp: this.browserTimestamp,
             previousEndTime: this.previousEndTime,
             delta: this.delta
         }
@@ -69,7 +74,7 @@ export class HeadersWithTimings extends Headers {
         this.append('Server-Timing', partialTiming);
         return { name, duration, endTime, startTime }
     }
-    computePartialTiming(name: string): { name: string, currentTime: number, duration: number, startTime: number, endTime: number, timeOrigin?: number, browserStartTime: number } {
+    computePartialTiming(name: string): { name: string, currentTime: number, duration: number, startTime: number, endTime: number, timeOrigin?: number, browserStartTime: number, previousEndTime: number } {
         let currentTime = Date.now(),
             duration = Math.floor(currentTime - this.previousEndTime),
             endTime = this.baseLine + this.now(),

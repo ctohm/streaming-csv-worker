@@ -21,9 +21,7 @@
     "xbuild:lib": "cd src/lib && yarn build && cd -",
     "deploy": "rm -rf dist/* &&  yarn transpile && yarn build &&    yarn publish",
     "test": " yarn build:dev && node  --experimental-vm-modules `yarn bin`/ava test/handler.test.mjs",
-    "xbuild:dev": "NODE_ENV=development node esbuild.mjs",
     "miniflare": "NODE_ENV=development miniflare packages/worker/dist/worker.mjs -d -w  -o DurableWk=DurableWk -c packages/worker/wrangler.toml --package  packages/worker/packages.json --build-base-path packages/worker   --build-watch-path packages/worker/src   --build-watch-path packages/lib/src"
-    
   },
   "author": {
     "email": "ffigueroa@ctohm.com",

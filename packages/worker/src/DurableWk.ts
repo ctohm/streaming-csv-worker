@@ -1,3 +1,4 @@
+/// <reference types="@cloudflare/workers-types" />
 import { IttyDurable, DurableStateWithSessions, DurableSessionsMap } from 'itty-durable'
 import { EnvWithDurableObject, json } from 'itty-router-extras';
 
@@ -18,6 +19,7 @@ type TSourceEntry = {
     duration: number;
     endTime: number;
     baseLine: number;
+    detail: { [s: string]: number }
 }
 
 type TSourceCsvParams = {
@@ -33,7 +35,7 @@ type ErrorObject = {
     url?: string;
     stack: string[];
 };
-type WebSocketWithTimings = {
+export type WebSocketWithTimings = {
     webSocket: WebSocket,
     timings?: HeadersWithTimings
 }
@@ -52,7 +54,7 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
 
     async getWithFetchStreamer({ sourceUrl, reqHeaders, ip }: TSourceCsvParams): Promise<Response> {
         console.time('fetch:getWithFetchStreamer');
-        let separator = '[', encoder = new TextEncoder(), { readable, writable } = new TransformStream<Uint8Array, Uint8Array>()
+        let separator = '[', encoder = new TextEncoder(), { readable, writable } = new TransformStream()
         const { originRes, session, requestEntry } = await this.getSourceResponse({ sourceUrl, reqHeaders, ip })
         const writer = writable.getWriter();
 
@@ -85,7 +87,12 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
             transformStreamer = new TransformStreamer({
                 download: true
             })
+        console.timeLog('TransformStreamer')
 
+        transformStreamer.on('end', () => {
+            console.info('transformStreamer end')
+            console.timeLog('TransformStreamer')
+        })
         if (!originRes.body) throw new Error('Could not get a parsable body')
         originRes.body.pipeTo(transformStreamer.writable).then(() => {
             this.sendFinalTiming({ requestEntry, sourceUrl, session })
@@ -113,12 +120,13 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
             delimiter: ',',
             from_line: 10,
             skip_lines_with_error: true,
+            complete: (result) => {
+                console.timeEnd('StreamingCSVParser');
+                this.sendFinalTiming({ requestEntry, sourceUrl, session })
+            }
         })
-
-        originRes.body.pipeTo(streamingCSVParser.writable).then(() => {
-            console.timeEnd('StreamingCSVParser')
-            this.sendFinalTiming({ requestEntry, sourceUrl, session })
-        })
+ 
+        originRes.body. pipeTo(streamingCSVParser.writable)
 
         return new Response(
             streamingCSVParser.readable, {
@@ -146,8 +154,8 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
             websocketTimings = wsTimings.toJSON(),
             completeMessage = {
                 name,
-                start: requestStart,
-                startTime: requestStart,
+                start: websocketTimings.baseLine,
+                startTime: websocketTimings.baseLine,
                 requestStart,
                 requestDuration,
                 requestEnd,
@@ -158,8 +166,9 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
                 endTime,
                 entryType: 'final',
                 url: url.searchParams.get('fileName') + '.csv',
-                details: { websocketTimings, now: wsTimings.now() }
+                detail: { ...websocketTimings, now: wsTimings.now() }
             }
+        completeMessage.detail.baseLine = completeMessage.detail.now - (requestDuration + responseDuration)
         console.log(completeMessage)
         this.emitWs(session.webSocket, completeMessage as TSourceEntry)
 
@@ -167,84 +176,103 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
     private async getSourceResponse({ sourceUrl, reqHeaders, ip }: TSourceCsvParams): Promise<{
         originRes: Response;
 
-        requestEntry: TSourceEntry & { details: TWsTimingSnapshot },
+        requestEntry: TSourceEntry & { detail: TWsTimingSnapshot },
         session: WebSocketWithTimings
     }> {
 
-        let session = this.state.sessions.get(ip) as WebSocketWithTimings
+        let session = await this.state.sessions.get(ip) as WebSocketWithTimings
         if (!session) throw new Error('No session found for IP ' + ip)
         if (!session.timings) throw new Error('webSocket session has no "timings" property')
 
         let wsTimings = session.timings as HeadersWithTimings,
             websocketTimings = wsTimings.toJSON(),
-            startTime = wsTimings.now() + websocketTimings.baseLine
+            altStartTime = reqHeaders.starttime,
+            startTime = websocketTimings.now + websocketTimings.baseLine
 
         const originRes = await fetch(sourceUrl, { headers: reqHeaders })
         if (!originRes.body || !originRes.ok) {
             throw new Error(originRes.statusText)
         }
-        console.info(Object.fromEntries(originRes.headers))
 
-        let endTime = wsTimings.now() + websocketTimings.baseLine,
+        let requestEnd = wsTimings.now(),
+            cf = originRes.cf,
+            endTime = requestEnd + websocketTimings.baseLine,
             duration = endTime - startTime,
 
 
             requestEntry = {
                 name: 'source_csv',
                 start: startTime,
-                startTime,
+                requestStart: websocketTimings.now,
+                requestEnd,
                 duration,
+                startTime,
+                altStartTime,
                 endTime,
                 baseLine: websocketTimings.baseLine,
-                details: websocketTimings
-            } as TSourceEntry & { details: TWsTimingSnapshot }
+                detail: websocketTimings,
+                cf
+            } as TSourceEntry & { detail: TWsTimingSnapshot }
         console.log(requestEntry)
+        // console.log('getSourceResponse', { ip, requestEntry, session, isWebsocket: session.webSocket instanceof WebSocket })
         this.emitWs(session.webSocket, requestEntry)
         return { originRes, session, requestEntry }
     }
-    private emitWs(webSocket: WebSocket | undefined, payload: TSourceEntry & { details: TWsTimingSnapshot }): void {
-        if (webSocket instanceof WebSocket && webSocket.readyState === WebSocket.OPEN) {
-            webSocket.send(JSON.stringify(payload))
+    private emitWs(webSocket: WebSocket | undefined, payload: TSourceEntry & { detail: TWsTimingSnapshot }): void {
+        if (!(webSocket instanceof WebSocket)) {
+            console.warn(`session.webSocket is not an instance of WebSocket`)
         } else {
-            console.warn({ OPEN: WebSocket.OPEN, readyState: webSocket && webSocket.readyState })
+            try {
+                webSocket.send(JSON.stringify(payload))
+            } catch (err) {
+                console.error(err)
+            }
         }
     }
-    async lystSessions() {
-        return Object.fromEntries(this.state.sessions)
-    }
-    async handleSession(webSocket: WebSocket, ip: string) {
+
+    async handleSession({ client, webSocket, ip }: { client: WebSocket, webSocket: WebSocket, ip: string }) {
         //@ts-ignore
         webSocket.accept()
-        let existing = this.state.sessions.get(ip)
+        let existing = await this.state.sessions.get(ip)
 
 
 
-        if (existing && existing.webSocket instanceof WebSocket && existing.webSocket.readyState === existing.webSocket.OPEN) {
-            console.log({ readyState: existing.webSocket.readyState })
+        if (existing && existing.webSocket instanceof WebSocket && existing.webSocket.readyState === 1) {
+            console.log({ existing: true, readyState: existing.webSocket.readyState })
             return
         }
-        existing = existing || { webSocket, timings: null, created: Date.now() } as WebSocketWithTimings
-        this.state.sessions.set(ip, existing)
-        webSocket.addEventListener("message", event => {
+        existing = existing || { ip, webSocket, timings: null, created: Date.now() } as unknown as WebSocketWithTimings
+        await this.state.sessions.set(ip, existing)
+        webSocket.addEventListener('error', err => {
+            console.error(err)
+        })
+       // client.addEventListener('message', msg => console.log({ clientMessage: msg.data }))
+        webSocket.addEventListener("message", async event => {
 
             let payload = JSON.parse(event.data)
             if (payload.timeOrigin && payload.now && payload.timestamp) {
-                console.log({ payload, })
                 const timings = new HeadersWithTimings({
-                    timeOrigin: payload.timeOrigin,
+                    browserTimeOrigin: payload.timeOrigin,
                     startTime: payload.now,
                     timestamp: payload.timestamp
                 })
-                existing = (this.state.sessions.get(ip) || { webSocket, timings }) as WebSocketWithTimings
+                existing = await (this.state.sessions.get(ip) || { ip, webSocket, timings }) as WebSocketWithTimings
                 existing.timings = timings
-                this.state.sessions.set(ip, existing)
+                existing.ip = ip
+                existing.webSocket = existing.webSocket || webSocket
+                let { readyState } = client
+                await this.state.sessions.set(ip, existing)
 
+                let jsonTimings = timings.toJSON ? timings.toJSON() : timings
+                console.log('payload has timeOrigin', {
+                    readyState, payload, timings: jsonTimings, webSocket: existing.webSocket
+                })
+                webSocket.send(JSON.stringify({ name: 'ready', ...jsonTimings }))
 
-                console.log({ timings: timings.toJSON ? timings.toJSON() : timings, existing })
             } else if (payload.type === 'beacon' && existing && existing.timings) {
                 webSocket.send(JSON.stringify(existing.timings))
             } else {
-                console.info(payload)
+                console.info({ otherPayload: payload })
             }
         })
         webSocket.addEventListener("close", () => {
@@ -257,7 +285,7 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
 
     async getWebsocketServer({ ip }: TSourceCsvParams): Promise<Response> {
         const [client, server] = Object.values(new WebSocketPair())
-        await this.handleSession(server, ip)
+        await this.handleSession({ webSocket: server, client, ip })
         return new Response(null, {
             status: 101,
             webSocket: client
@@ -267,18 +295,20 @@ export class DurableWk extends IttyDurable<WebSocketWithTimings> implements Dura
 
 
         let method: string = req.url.split('/call/').pop() as string
+        let cfIP = req.headers.get("ip") || req.headers.get("CF-Connecting-IP") || '127.0.0.1';
         if (method === 'getWebsocketServer') {
-            let ip = req.headers.get("CF-Connecting-IP") || '127.0.0.1';
-            return this.getWebsocketServer({ ip } as TSourceCsvParams)
+            console.info({ method, cfIP })
+            //console.log(Object.fromEntries(req.headers))
+            return this.getWebsocketServer({ ip: cfIP } as TSourceCsvParams)
         }
-
         let body = await req.json();
 
 
 
         let { sourceUrl, reqHeaders, ip } = (body[0] || {}) as TSourceCsvParams,
-
             jsonParams = { sourceUrl, reqHeaders, ip }
+
+     //   console.info({ reqHeaders, method, cfIP, ip })
 
         try {
 
