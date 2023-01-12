@@ -1,6 +1,6 @@
 {
   "name": "@ctohm/streaming-csv-adapters",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Streaming parser of incoming CSV. It can return a stream of JSON or a regular JS array",
   "module": "src/index.ts",
   "main": "dist/index.cjs",
@@ -30,7 +30,8 @@
   "dependencies": {
     "csv-parse": "^4.16.0",
     "papaparse": "^5.3.1",
-    "stream-transform": "^3.0.4"
+    "stream-transform": "^3.0.4",
+    "worktop": "^0.7.3"
   },
   "devDependencies": {
     "@types/node": "^17.0.10",
